@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
-import PathStack from './PathStackNavigator';
+import PathStack from '../navigation/PathStackNavigator';
 import ResumeScreen from '../screens/ResumeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 

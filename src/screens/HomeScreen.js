@@ -7,33 +7,33 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const query = 'software engineer'; // hardcode for now to test
-        const response = await fetch(
-          `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=5&apikey=${process.env.EXPO_PUBLIC_GNEWS_API_KEY}`
-        );
-        const data = await response.json();
+//   useEffect(() => {
+//     const fetchNews = async () => {
+//       try {
+//         const query = 'software engineer'; // hardcode for now to test
+//         const response = await fetch(
+//           `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=5&apikey=${process.env.EXPO_PUBLIC_GNEWS_API_KEY}`
+//         );
+//         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.errors?.[0] || 'GNews request failed');
-        }
+//         if (!response.ok) {
+//           throw new Error(data.errors?.[0] || 'GNews request failed');
+//         }
 
-        setNews(data.articles || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+//         setNews(data.articles || []);
+//       } catch (err) {
+//         setError(err.message);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
 
-    fetchNews();
-  }, []);
+//     fetchNews();
+//   }, []);
 
   return (
     <SafeAreaView>
-      <Text>Latest News</Text>
+      {/* <Text>Latest News</Text>
 
       {loading && <ActivityIndicator />}
       {error && <Text>{error}</Text>}
@@ -46,7 +46,7 @@ export default function HomeScreen() {
             {article.url}
           </Text>
         </View>
-      ))}
+      ))} */}
     </SafeAreaView>
   );
 }
