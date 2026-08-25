@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 
-export default function PathScreen() {
+export default function PathScreen({ navigation }) {
   const [goal, setGoal] = useState('');
   const [stages, setStages] = useState([]);
 
@@ -17,8 +17,24 @@ export default function PathScreen() {
         body: JSON.stringify({
           model: 'openai/gpt-oss-20b',
           messages: [
-            { role: 'system', content: 'Return ONLY valid JSON: {"stages": [{"title": string, "description": string}]}' },
-            { role: 'user', content: `My career goal: ${goal}` },
+          {
+            role: 'system',
+            content: `You are a career roadmap generator, similar to roadmap.sh.
+
+            Given a career goal, break it down into a clear, ordered, step-by-step learning path.
+
+            Rules:
+            - Return EXACTLY 10 stages, ordered from foundational/beginner to advanced.
+            - Each stage represents one skill area or topic (e.g. "Python Foundations", "Machine Learning Basics", "LangChain & LLM Apps").
+            - Stages must be in logical progression — earlier stages should be prerequisites for later ones.
+            - Each stage must include a "todos" array of 3-6 concrete, specific sub-topics or action items to learn/do within that stage (e.g. for "Python Foundations": "Variables", "Conditionals", "Loops", "OOP").
+            - Todos should be short (2-4 words each), not full sentences.
+            - Do not include any explanation, preamble, or markdown formatting outside the JSON.
+
+            Return ONLY valid JSON in this exact shape:
+            {"stages": [{"title": string, "todos": string[]}]}`
+          },
+          { role: 'user', content: `My career goal: ${goal}` },
           ],
           response_format: { type: 'json_object' },
         }),
@@ -34,16 +50,32 @@ export default function PathScreen() {
     }
   };
 
+  const removeRoadmap = () => {
+    setGoal('');
+    setStages([]);
+  }
+
   return (
-    <View style={{ padding: 20 }}>
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
       <TextInput value={goal} onChangeText={setGoal} placeholder="Your goal" style={{ borderWidth: 1, marginBottom: 10, padding: 8 }} />
       <TouchableOpacity onPress={generateRoadmap}>
         <Text>Generate</Text>
       </TouchableOpacity>
 
       {stages.map((s, i) => (
-        <Text key={i}>{s.title}</Text>
+        <TouchableOpacity
+          key={i}
+          onPress={() => navigation.navigate('StepDetail', {stage:s})}
+        >
+          <Text>
+            {s.title}
+          </Text>
+        </TouchableOpacity>
       ))}
-    </View>
+
+      <TouchableOpacity onPress={removeRoadmap}>
+        <Text>remove roadmap</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }

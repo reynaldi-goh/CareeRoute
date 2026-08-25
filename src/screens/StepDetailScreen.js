@@ -1,10 +1,15 @@
-import { View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView } from 'react-native';
 
-export default function StepDetailScreen() {
+export default function StepDetailScreen({ route }) {
+  const { stage } = route.params;
+
   return (
-    <SafeAreaView>
-      <Text>Step Detail </Text>
-    </SafeAreaView>
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <Text>{stage.title}</Text>
+
+      {stage.todos.map((todo, i) => (
+        <Text key={i}>{i + 1}. {todo}</Text>
+      ))}
+    </ScrollView>
   );
 }
