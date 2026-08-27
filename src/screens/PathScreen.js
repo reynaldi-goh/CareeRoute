@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { useCareer } from '../context/CareerContext';
 
 export default function PathScreen({ navigation }) {
-  const [goal, setGoal] = useState('');
-  const [stages, setStages] = useState([]);
+  const { goal, setGoal, stages, setStages, removeRoadmap } = useCareer();
 
   const generateRoadmap = async () => {
     console.log('button pressed');
@@ -49,11 +49,6 @@ export default function PathScreen({ navigation }) {
       console.log('ERROR:', err.message);
     }
   };
-
-  const removeRoadmap = () => {
-    setGoal('');
-    setStages([]);
-  }
 
   return (
     <ScrollView contentContainerStyle={{ padding: 20 }}>

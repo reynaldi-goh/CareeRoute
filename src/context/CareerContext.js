@@ -17,7 +17,7 @@ export function CareerProvider({ children }) {
     }));
   };
 
-  const clearRoadmap = () => {
+  const removeRoadmap = () => {
     setGoal('');
     setStages([]);
     setCheckedByStage({});
@@ -25,7 +25,7 @@ export function CareerProvider({ children }) {
 
   return (
     <CareerContext.Provider
-      value={{ goal, setGoal, stages, setStages, checkedByStage, toggleTodo, clearRoadmap }}
+      value={{ goal, setGoal, stages, setStages, checkedByStage, toggleTodo, removeRoadmap }}
     >
       {children}
     </CareerContext.Provider>
