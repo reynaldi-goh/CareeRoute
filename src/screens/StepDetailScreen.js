@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { useCareer } from '../context/CareerContext';
 
 export default function StepDetailScreen({ route }) {
-  const { stage } = route.params;
+  const { stageIndex } = route.params;
+  const { goal, stages, checkedByStage, toggleTodo } = useCareer();
+  const stage = stages[stageIndex];
+  const checked = checkedByStage[stageIndex] || {};
+
   const [elaborated, setElaborated] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [checked, setChecked] = useState({}); // { 0: true, 1: false, ... }
-
-  const toggleTodo = (index) => {
-    setChecked((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
 
   const elaborateWithAI = async () => {
     setLoading(true);
@@ -25,11 +25,11 @@ export default function StepDetailScreen({ route }) {
           messages: [
             {
               role: 'system',
-              content: `You are a learning coach. Given a stage title and a list of short todo items, expand EACH todo into a short explanation (2-3 sentences): what it is, and why it matters for this stage. Return ONLY valid JSON in this shape: {"items": [{"todo": string, "explanation": string}]}`,
+              content: `You are a learning coach helping someone pursue a specific career goal. Given the person's career goal, the current stage title, and a list of short todo items, expand EACH todo into a short explanation (2-3 sentences): what it is, and specifically why/how it matters in the context of becoming a ${goal}. Tailor every explanation to that career goal, not a generic definition. Return ONLY valid JSON in this shape: {"items": [{"todo": string, "explanation": string}]}`,
             },
             {
               role: 'user',
-              content: `Stage: ${stage.title}\nTodos: ${stage.todos.join(', ')}`,
+              content: `Career goal: ${goal}\nStage: ${stage.title}\nTodos: ${stage.todos.join(', ')}`,
             },
           ],
           response_format: { type: 'json_object' },
@@ -51,10 +51,8 @@ export default function StepDetailScreen({ route }) {
       <Text>{stage.title}</Text>
 
       {stage.todos.map((todo, i) => (
-        <TouchableOpacity key={i} onPress={() => toggleTodo(i)}>
-          <Text>
-            {checked[i] ? '☑' : '☐'} {todo}
-          </Text>
+        <TouchableOpacity key={i} onPress={() => toggleTodo(stageIndex, i)}>
+          <Text>{checked[i] ? '☑' : '☐'} {todo}</Text>
         </TouchableOpacity>
       ))}
 
@@ -68,9 +66,7 @@ export default function StepDetailScreen({ route }) {
         <View>
           {elaborated.map((item, i) => (
             <View key={i}>
-              <Text>
-                {item.todo}
-              </Text>
+              <Text>{item.todo}</Text>
               <Text>{item.explanation}</Text>
             </View>
           ))}

@@ -60,7 +60,7 @@ export default function PathScreen({ navigation }) {
       {stages.map((s, i) => (
         <TouchableOpacity
           key={i}
-          onPress={() => navigation.navigate('StepDetail', {stage:s})}
+          onPress={() => navigation.navigate('StepDetail', {stageIndex: i})}
         >
           <Text>
             {s.title}
