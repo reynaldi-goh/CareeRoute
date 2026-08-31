@@ -71,6 +71,30 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+   const pickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Gallery permission needed');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  };
+
+  const choosePhoto = () => {
+    Alert.alert('Profile Photo', 'Choose an option', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Camera', onPress: takeProfilePhoto },
+      { text: 'Gallery', onPress: pickFromGallery },
+    ]);
+  };
+
     const handleLogout = () => {
       navigation.reset({
         index: 0,
@@ -82,9 +106,9 @@ export default function SettingsScreen({ navigation }) {
     <SafeAreaView>
       <Text>Settings</Text>
 
-      <TouchableOpacity onPress={takeProfilePhoto}>
+      <TouchableOpacity onPress={choosePhoto}>
         {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={{ width: 80, height: 80 }} />
+          <Image source={{ uri: avatarUri }} style={{ width: 200, height: 200 }} />
         ) : (
           <Text>Tap to add photo</Text>
         )}
@@ -115,6 +139,18 @@ export default function SettingsScreen({ navigation }) {
         <Text>Notifications</Text>
         <Switch value={notifications} onValueChange={toggleNotifications} />
       </View>
+
+      <TouchableOpacity>
+        <Text>Help</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity>
+        <Text>About</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity>
+        <Text>Privacy Policy</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={handleLogout}>
         <Text>Logout</Text>
