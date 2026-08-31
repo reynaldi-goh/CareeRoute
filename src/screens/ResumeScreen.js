@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
-import { PdfThumbnail } from 'react-native-pdf-thumbnail';
+import Pdf from 'react-native-pdf';
+import { extractText } from 'expo-pdf-text-extract';
+import { useCareer } from '../context/CareerContext';
+import { askAI } from '../API/ai';
 
 export default function ResumeScreen() {
+  const { goal, stages } = useCareer();
   const [file, setFile] = useState(null);
-  const [thumbnail, setThumbnail] = useState(null);
-  const [loadingThumbnail, setLoadingThumbnail] = useState(false);
+  const [resumeText, setResumeText] = useState('');
+  const [extracting, setExtracting] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
 
@@ -17,83 +21,63 @@ export default function ResumeScreen() {
     });
 
     if (!result.canceled) {
-      const selectedFile = result.assets[0];
-      setFile(selectedFile);
-      generateThumbnail(selectedFile.uri);
+      const picked = result.assets[0];
+      setFile(picked);
+      setAiResponse(null);
+
+      setExtracting(true);
+      try {
+        const text = await extractText(picked.uri);
+        console.log('extracted text:', text);
+        setResumeText(text);
+      } catch (err) {
+        console.log('extraction error:', err.message);
+      } finally {
+        setExtracting(false);
+      }
     }
   };
 
-  const generateThumbnail = async (uri) => {
-    setLoadingThumbnail(true);
-    setThumbnail(null);
-    try {
-      const { uri: thumbUri } = await PdfThumbnail.generate(uri, 0);
-      setThumbnail(thumbUri);
-    } catch (e) {
-      console.log('Thumbnail generation error:', e);
-    } finally {
-      setLoadingThumbnail(false);
-    }
-  };
+const generateAIFeedback = async () => {
+  setLoadingFeedback(true);
+  try {
+    const skillsList = stages
+      .flatMap((s) => s.todos)
+      .join(', ');
 
-  const generateAIFeedback = async () => {
-    setLoadingFeedback(true);
-    try {
-      const dummyResumeText = `John Doe
-Software Engineer
-Experience: 2 years building React Native apps.
-Skills: JavaScript, React, Node.js, basic Python.
-Education: BSc Computer Science.`;
+    const parsed = await askAI(
+      'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number, "feedback": string[]}',
+      `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList}`
+    );
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.EXPO_PUBLIC_GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-20b',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a resume reviewer. Return ONLY valid JSON in this shape: {"matchScore": number, "feedback": string[]}',
-            },
-            {
-              role: 'user',
-              content: `Resume:\n${dummyResumeText}\n\nCareer goal: AI Engineer`,
-            },
-          ],
-          response_format: { type: 'json_object' },
-        }),
-      });
-
-      const data = await response.json();
-      console.log('raw response:', data);
-
-      const parsed = JSON.parse(data.choices[0].message.content);
-      setAiResponse(parsed);
-    } catch (err) {
-      console.log('ERROR:', err.message);
-    } finally {
-      setLoadingFeedback(false);
-    }
-  };
+    setAiResponse(parsed);
+  } catch (err) {
+    console.log('ERROR:', err.message);
+  } finally {
+    setLoadingFeedback(false);
+  }
+};
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}>
       <Text>Resume</Text>
 
       <TouchableOpacity onPress={pickResume}>
         <Text>Upload Resume</Text>
       </TouchableOpacity>
 
-      {file && <Text>{file.name}</Text>}
+      {file && (
+        <>
+          <Text>{file.name}</Text>
+          <View style={{ flex: 1, height: 600 }}>
+            <Pdf source={{ uri: file.uri, cache: false }} style={{ flex: 1 }} />
+          </View>
+        </>
+      )}
 
-      {loadingThumbnail && <ActivityIndicator />}
+      {extracting && <Text>Extracting text...</Text>}
 
-      {thumbnail && <Image source={{ uri: thumbnail }} />}
-
-      <TouchableOpacity onPress={generateAIFeedback}>
+      <TouchableOpacity onPress={generateAIFeedback} disabled={!resumeText || loadingFeedback}>
         <Text>generate AI feedbacks</Text>
       </TouchableOpacity>
 
@@ -101,7 +85,7 @@ Education: BSc Computer Science.`;
 
       {aiResponse && (
         <View>
-          <Text>Match score: {aiResponse.matchScore}/10</Text>
+          <Text>Match score: {aiResponse.matchScore}/100</Text>
           {aiResponse.feedback.map((point, i) => (
             <Text key={i}>• {point}</Text>
           ))}
