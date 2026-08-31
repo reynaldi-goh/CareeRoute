@@ -13,7 +13,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const [avatarUri, setAvatarUri] = useState(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -71,9 +71,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
-    console.log('logout pressed');
-  };
+    const handleLogout = () => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Auth' }],
+      });
+    };
 
   return (
     <SafeAreaView>
