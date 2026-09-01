@@ -38,6 +38,12 @@ export function CareerProvider({ children }) {
     setCheckedByStage({});
   };
 
+  const removeResume = () => {
+    setResumeFile(null);
+    setResumeText('');
+    setResumeFeedback(null);
+  };
+
   // single source of truth: which stage is "current" across the whole app
   const activeStageIndex = useMemo(() => {
     if (stages.length === 0) return -1;
@@ -62,6 +68,7 @@ export function CareerProvider({ children }) {
     resumeFile, setResumeFile,
     resumeText, setResumeText,
     resumeFeedback, setResumeFeedback,
+    removeResume,
   };
 
   return <CareerContext.Provider value={value}>{children}</CareerContext.Provider>;

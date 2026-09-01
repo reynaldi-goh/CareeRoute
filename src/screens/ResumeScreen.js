@@ -13,6 +13,7 @@ export default function ResumeScreen() {
     resumeFile, setResumeFile,
     resumeText, setResumeText,
     resumeFeedback, setResumeFeedback,
+    removeResume,
   } = useCareer();
 
   const [extracting, setExtracting] = useState(false);
@@ -88,6 +89,12 @@ export default function ResumeScreen() {
             <Text key={i}>• {point}</Text>
           ))}
         </View>
+      )}
+
+      {resumeFile && (
+        <TouchableOpacity onPress={removeResume}>
+          <Text>remove resume</Text>
+        </TouchableOpacity>
       )}
       </ScrollView>
     </SafeAreaView>
