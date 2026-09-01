@@ -13,6 +13,15 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Android 8+ silently drops all notifications without a channel — no error, no log.
+// This must run before any notification is scheduled.
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('default', {
+    name: 'default',
+    importance: Notifications.AndroidImportance.HIGH,
+  });
+}
+
 export default function SettingsScreen({ navigation }) {
   const [avatarUri, setAvatarUri] = useState(null);
   const [username, setUsername] = useState('');
@@ -46,7 +55,9 @@ export default function SettingsScreen({ navigation }) {
           body: "Don't forget to check off today's tasks!",
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: 5,
+          channelId: 'default',
         },
       });
     } else {
