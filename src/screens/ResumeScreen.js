@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { extractText } from 'expo-pdf-text-extract';
@@ -56,6 +56,7 @@ export default function ResumeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView>
       <Text>Resume</Text>
 
       <TouchableOpacity onPress={pickResume}>
@@ -82,12 +83,13 @@ export default function ResumeScreen() {
 
       {resumeFeedback && (
         <View>
-          <Text>Match score: {resumeFeedback.matchScore}/10</Text>
+          <Text>Match score: {resumeFeedback.matchScore}/100</Text>
           {resumeFeedback.feedback.map((point, i) => (
             <Text key={i}>• {point}</Text>
           ))}
         </View>
       )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

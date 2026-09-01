@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Switch } from 'react-native';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 
@@ -11,11 +11,21 @@ export default function PathScreen({ navigation }) {
     resumeText,
   } = useCareer();
 
+  const [input, setInput] = useState(goal || '');
   const [loading, setLoading] = useState(false);
+  const [useResume, setUseResume] = useState(!!resumeText);
+
+  const includeResume = useResume && !!resumeText;
 
   const generateRoadmap = async () => {
     setLoading(true);
     try {
+      const { jobTitle } = await askAI(
+        'Extract the specific job/career title from the user\'s message, even if phrased casually or with extra commentary. Return ONLY valid JSON: {"jobTitle": string}. Use standard title casing (e.g. "ML Engineer", "UX Designer").',
+        input
+      );
+      setGoal(jobTitle); // overwrite the messy input with the clean title
+
       const parsed = await askAI(
         `You are a career roadmap generator, similar to roadmap.sh.
 
@@ -32,7 +42,7 @@ export default function PathScreen({ navigation }) {
         Return ONLY valid JSON in this exact shape:
         {"stages": [{"title": string, "todos": string[], "completedTodos": number[]}]}`,
 
-        `My career goal: ${goal}\n\n${resumeText ? `My resume:\n${resumeText}` : 'No resume provided.'}`
+        `My career goal: ${jobTitle}\n\n${includeResume ? `My resume:\n${resumeText}` : 'No resume provided.'}`
       );
 
       applyRoadmap(parsed.stages);
@@ -46,8 +56,8 @@ export default function PathScreen({ navigation }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 20 }}>
       <TextInput
-        value={goal}
-        onChangeText={setGoal}
+        value={input}
+        onChangeText={setInput}
         placeholder="Your goal"
         style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
       />
@@ -57,10 +67,23 @@ export default function PathScreen({ navigation }) {
           Tip: upload your resume on the Resume tab first to get a personalized starting point.
         </Text>
       )}
+
       {resumeText && (
-        <Text style={{ marginBottom: 10, color: '#4A7CFF' }}>
-          Using your uploaded resume to assess progress.
-        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 10,
+          }}
+        >
+          <Text style={{ color: useResume ? '#4A7CFF' : '#888' }}>
+            {useResume
+              ? 'Using your uploaded resume to assess progress'
+              : 'Not using your resume for this roadmap'}
+          </Text>
+          <Switch value={useResume} onValueChange={setUseResume} />
+        </View>
       )}
 
       <TouchableOpacity onPress={generateRoadmap} disabled={loading}>
