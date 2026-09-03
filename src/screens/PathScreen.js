@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Switch } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  ActivityIndicator, Switch, Animated, StyleSheet,
+} from 'react-native';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
+import { colors, typography, radius, spacing, shared } from '../styles/styles';
 
 export default function PathScreen({ navigation }) {
   const {
@@ -17,11 +21,39 @@ export default function PathScreen({ navigation }) {
   const [useResume, setUseResume] = useState(!!resumeText);
   const [error, setError] = useState(null);
 
-  // goal loads asynchronously from Supabase after mount — sync the input box once it arrives,
-  // but don't clobber anything the user has already started typing
+  // one Animated.Value per stage (+ matching arrow), rebuilt whenever the stage count changes
+  const fadeAnims = useRef([]).current;
+  const arrowAnims = useRef([]).current;
+
   useEffect(() => {
     if (goal && !input) setInput(goal);
   }, [goal]);
+
+  // whenever a new roadmap lands, (re)build animated values and run the staggered sequence
+  useEffect(() => {
+    if (stages.length === 0) return;
+
+    fadeAnims.length = 0;
+    arrowAnims.length = 0;
+    stages.forEach(() => {
+      fadeAnims.push(new Animated.Value(0));
+      arrowAnims.push(new Animated.Value(0));
+    });
+
+    const sequence = [];
+    stages.forEach((_, i) => {
+      sequence.push(
+        Animated.timing(fadeAnims[i], { toValue: 1, duration: 350, useNativeDriver: true })
+      );
+      if (i < stages.length - 1) {
+        sequence.push(
+          Animated.timing(arrowAnims[i], { toValue: 1, duration: 200, useNativeDriver: true })
+        );
+      }
+    });
+
+    Animated.stagger(80, sequence).start();
+  }, [stages]);
 
   const includeResume = useResume && !!resumeText;
 
@@ -33,7 +65,7 @@ export default function PathScreen({ navigation }) {
         'Extract the specific job/career title from the user\'s message, even if phrased casually or with extra commentary. Return ONLY valid JSON: {"jobTitle": string}. Use standard title casing (e.g. "ML Engineer", "UX Designer").',
         input
       );
-      setGoal(jobTitle); // overwrite the messy input with the clean title
+      setGoal(jobTitle);
 
       const parsed = await askAI(
         `You are a career roadmap generator, similar to roadmap.sh.
@@ -65,63 +97,118 @@ export default function PathScreen({ navigation }) {
 
   if (loadingRoadmap) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+      <View style={[shared.screen, styles.centered]}>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 20 }}>
-      {error && <Text style={{ color: 'red', marginBottom: 10 }}>{error}</Text>}
+    <ScrollView style={shared.screen} contentContainerStyle={styles.content}>
+      <Text style={typography.heading}>Your Path</Text>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
 
       <TextInput
         value={input}
         onChangeText={setInput}
-        placeholder="Your goal"
-        style={{ borderWidth: 1, marginBottom: 10, padding: 8 }}
+        placeholder="e.g. ML Engineer"
+        placeholderTextColor={colors.placeholder}
+        style={[shared.input, styles.gapBelow]}
       />
 
       {!resumeText && (
-        <Text style={{ marginBottom: 10, color: '#888' }}>
+        <Text style={[typography.caption, styles.gapBelow]}>
           Tip: upload your resume on the Resume tab first to get a personalized starting point.
         </Text>
       )}
 
       {resumeText && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 10,
-          }}
-        >
-          <Text style={{ color: useResume ? '#4A7CFF' : '#888' }}>
-            {useResume
-              ? 'Using your uploaded resume to assess progress'
-              : 'Not using your resume for this roadmap'}
+        <View style={[styles.resumeToggleRow, styles.gapBelow]}>
+          <Text style={[typography.normal, { color: useResume ? colors.primary : colors.placeholder }]}>
+            {useResume ? 'Using your uploaded resume' : 'Not using your resume'}
           </Text>
-          <Switch value={useResume} onValueChange={setUseResume} />
+          <Switch
+            value={useResume}
+            onValueChange={setUseResume}
+            trackColor={{ true: colors.primary }}
+          />
         </View>
       )}
 
-      <TouchableOpacity onPress={generateRoadmap} disabled={loading}>
-        {loading ? <ActivityIndicator /> : <Text>Generate</Text>}
+      <TouchableOpacity
+        style={[shared.primaryButton, styles.gapBelow]}
+        onPress={generateRoadmap}
+        disabled={loading}
+      >
+        {loading ? <ActivityIndicator color={colors.white} /> : (
+          <Text style={shared.primaryButtonText}>
+            {stages.length > 0 ? 'Regenerate Roadmap' : 'Generate Roadmap'}
+          </Text>
+        )}
       </TouchableOpacity>
 
       {stages.map((s, i) => (
-        <TouchableOpacity
-          key={i}
-          onPress={() => navigation.navigate('StepDetail', { stageIndex: i })}
-        >
-          <Text>[{getStageStatus(i)}] {s.title}</Text>
-        </TouchableOpacity>
+        <View key={i}>
+          <Animated.View style={{ opacity: fadeAnims[i] || 1 }}>
+            <TouchableOpacity
+              style={[shared.card, styles.stageCard]}
+              onPress={() => navigation.navigate('StepDetail', { stageIndex: i })}
+            >
+              <View style={[styles.statusDot, statusDotStyle(getStageStatus(i))]} />
+              <View style={styles.stageTextWrap}>
+                <Text style={typography.section}>{s.title}</Text>
+                <Text style={typography.caption}>{statusLabel(getStageStatus(i))}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {i < stages.length - 1 && (
+            <Animated.View style={[styles.arrowWrap, { opacity: arrowAnims[i] || 1 }]}>
+              <Text style={styles.arrow}>↓</Text>
+            </Animated.View>
+          )}
+        </View>
       ))}
 
-      <TouchableOpacity onPress={removeRoadmap}>
-        <Text>remove roadmap</Text>
-      </TouchableOpacity>
+      {stages.length > 0 && (
+        <TouchableOpacity style={styles.removeLink} onPress={removeRoadmap}>
+          <Text style={styles.removeLinkText}>Remove roadmap</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
+
+function statusDotStyle(status) {
+  if (status === 'done') return { backgroundColor: colors.primary };
+  if (status === 'current') return { backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.text };
+  return { backgroundColor: colors.placeholder };
+}
+
+function statusLabel(status) {
+  if (status === 'done') return 'Completed';
+  if (status === 'current') return 'In progress';
+  return 'Upcoming';
+}
+
+const styles = StyleSheet.create({
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  centered: { alignItems: 'center', justifyContent: 'center' },
+  gapBelow: { marginTop: spacing.md },
+  errorText: { color: '#DC2626', marginBottom: spacing.sm },
+  resumeToggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  stageCard: {
+    flexDirection: 'row', alignItems: 'center', marginTop: spacing.md,
+  },
+  statusDot: {
+    width: 12, height: 12, borderRadius: 6, marginRight: spacing.md,
+  },
+  stageTextWrap: { flex: 1 },
+  arrowWrap: { alignItems: 'center', paddingVertical: 2 },
+  arrow: { fontSize: 20, color: colors.placeholder },
+  removeLink: { alignSelf: 'center', marginTop: spacing.lg },
+  removeLinkText: { color: colors.placeholder, fontSize: 13 },
+});
