@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/navigation/TabNavigator';
 import AuthStack from './src/navigation/AuthNavigator';
 import { CareerProvider } from './src/context/CareerContext';
+import { ProfileProvider } from './src/context/ProfileContext';
 import { supabase } from './src/API/supabaseClient';
 
 const RootStack = createNativeStackNavigator();
@@ -75,17 +76,19 @@ export default function App() {
 
   return (
     <CareerProvider>
-      <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            {session ? (
-              <RootStack.Screen name="MainTabs" component={TabNavigator} />
-            ) : (
-              <RootStack.Screen name="Auth" component={AuthStack} />
-            )}
-          </RootStack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
+      <ProfileProvider>
+        <SafeAreaProvider>
+          <NavigationContainer ref={navigationRef}>
+            <RootStack.Navigator screenOptions={{ headerShown: false }}>
+              {session ? (
+                <RootStack.Screen name="MainTabs" component={TabNavigator} />
+              ) : (
+                <RootStack.Screen name="Auth" component={AuthStack} />
+              )}
+            </RootStack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </ProfileProvider>
     </CareerProvider>
   );
 }

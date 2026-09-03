@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Switch } from 'react-native';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
@@ -6,7 +6,8 @@ import { askAI } from '../API/ai';
 export default function PathScreen({ navigation }) {
   const {
     goal, setGoal,
-    stages, applyRoadmap, removeRoadmap,
+    stages, saveRoadmap, removeRoadmap,
+    loadingRoadmap,
     getStageStatus,
     resumeText,
   } = useCareer();
@@ -14,11 +15,19 @@ export default function PathScreen({ navigation }) {
   const [input, setInput] = useState(goal || '');
   const [loading, setLoading] = useState(false);
   const [useResume, setUseResume] = useState(!!resumeText);
+  const [error, setError] = useState(null);
+
+  // goal loads asynchronously from Supabase after mount — sync the input box once it arrives,
+  // but don't clobber anything the user has already started typing
+  useEffect(() => {
+    if (goal && !input) setInput(goal);
+  }, [goal]);
 
   const includeResume = useResume && !!resumeText;
 
   const generateRoadmap = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { jobTitle } = await askAI(
         'Extract the specific job/career title from the user\'s message, even if phrased casually or with extra commentary. Return ONLY valid JSON: {"jobTitle": string}. Use standard title casing (e.g. "ML Engineer", "UX Designer").',
@@ -45,16 +54,27 @@ export default function PathScreen({ navigation }) {
         `My career goal: ${jobTitle}\n\n${includeResume ? `My resume:\n${resumeText}` : 'No resume provided.'}`
       );
 
-      applyRoadmap(parsed.stages);
+      await saveRoadmap(jobTitle, parsed.stages);
     } catch (err) {
       console.log('ERROR:', err.message);
+      setError(err.message || 'Something went wrong generating your roadmap. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingRoadmap) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={{ padding: 20 }}>
+      {error && <Text style={{ color: 'red', marginBottom: 10 }}>{error}</Text>}
+
       <TextInput
         value={input}
         onChangeText={setInput}
