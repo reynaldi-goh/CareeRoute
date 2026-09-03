@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Switch, Animated, StyleSheet,
+  Text, TextInput, TouchableOpacity, ScrollView,
+  ActivityIndicator, Switch, Animated, StyleSheet, View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
@@ -21,7 +22,6 @@ export default function PathScreen({ navigation }) {
   const [useResume, setUseResume] = useState(!!resumeText);
   const [error, setError] = useState(null);
 
-  // one Animated.Value per stage (+ matching arrow), rebuilt whenever the stage count changes
   const fadeAnims = useRef([]).current;
   const arrowAnims = useRef([]).current;
 
@@ -29,7 +29,6 @@ export default function PathScreen({ navigation }) {
     if (goal && !input) setInput(goal);
   }, [goal]);
 
-  // whenever a new roadmap lands, (re)build animated values and run the staggered sequence
   useEffect(() => {
     if (stages.length === 0) return;
 
@@ -97,86 +96,88 @@ export default function PathScreen({ navigation }) {
 
   if (loadingRoadmap) {
     return (
-      <View style={[shared.screen, styles.centered]}>
+      <SafeAreaView edges={['top']} style={[shared.screen, styles.centered]}>
         <ActivityIndicator color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={shared.screen} contentContainerStyle={styles.content}>
-      <Text style={typography.heading}>Your Path</Text>
+    <SafeAreaView edges={['top']} style={shared.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={typography.heading}>Your Path</Text>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
-      <TextInput
-        value={input}
-        onChangeText={setInput}
-        placeholder="e.g. ML Engineer"
-        placeholderTextColor={colors.placeholder}
-        style={[shared.input, styles.gapBelow]}
-      />
+        <TextInput
+          value={input}
+          onChangeText={setInput}
+          placeholder="e.g. ML Engineer"
+          placeholderTextColor={colors.placeholder}
+          style={[shared.input, styles.gapBelow]}
+        />
 
-      {!resumeText && (
-        <Text style={[typography.caption, styles.gapBelow]}>
-          Tip: upload your resume on the Resume tab first to get a personalized starting point.
-        </Text>
-      )}
-
-      {resumeText && (
-        <View style={[styles.resumeToggleRow, styles.gapBelow]}>
-          <Text style={[typography.normal, { color: useResume ? colors.primary : colors.placeholder }]}>
-            {useResume ? 'Using your uploaded resume' : 'Not using your resume'}
-          </Text>
-          <Switch
-            value={useResume}
-            onValueChange={setUseResume}
-            trackColor={{ true: colors.primary }}
-          />
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={[shared.primaryButton, styles.gapBelow]}
-        onPress={generateRoadmap}
-        disabled={loading}
-      >
-        {loading ? <ActivityIndicator color={colors.white} /> : (
-          <Text style={shared.primaryButtonText}>
-            {stages.length > 0 ? 'Regenerate Roadmap' : 'Generate Roadmap'}
+        {!resumeText && (
+          <Text style={[typography.caption, styles.gapBelow]}>
+            Tip: upload your resume on the Resume tab first to get a personalized starting point.
           </Text>
         )}
-      </TouchableOpacity>
 
-      {stages.map((s, i) => (
-        <View key={i}>
-          <Animated.View style={{ opacity: fadeAnims[i] || 1 }}>
-            <TouchableOpacity
-              style={[shared.card, styles.stageCard]}
-              onPress={() => navigation.navigate('StepDetail', { stageIndex: i })}
-            >
-              <View style={[styles.statusDot, statusDotStyle(getStageStatus(i))]} />
-              <View style={styles.stageTextWrap}>
-                <Text style={typography.section}>{s.title}</Text>
-                <Text style={typography.caption}>{statusLabel(getStageStatus(i))}</Text>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
+        {resumeText && (
+          <View style={[styles.resumeToggleRow, styles.gapBelow]}>
+            <Text style={[typography.normal, { color: useResume ? colors.primary : colors.placeholder }]}>
+              {useResume ? 'Using your uploaded resume' : 'Not using your resume'}
+            </Text>
+            <Switch
+              value={useResume}
+              onValueChange={setUseResume}
+              trackColor={{ true: colors.primary }}
+            />
+          </View>
+        )}
 
-          {i < stages.length - 1 && (
-            <Animated.View style={[styles.arrowWrap, { opacity: arrowAnims[i] || 1 }]}>
-              <Text style={styles.arrow}>↓</Text>
-            </Animated.View>
+        <TouchableOpacity
+          style={[shared.primaryButton, styles.gapBelow]}
+          onPress={generateRoadmap}
+          disabled={loading}
+        >
+          {loading ? <ActivityIndicator color={colors.white} /> : (
+            <Text style={shared.primaryButtonText}>
+              {stages.length > 0 ? 'Regenerate Roadmap' : 'Generate Roadmap'}
+            </Text>
           )}
-        </View>
-      ))}
-
-      {stages.length > 0 && (
-        <TouchableOpacity style={styles.removeLink} onPress={removeRoadmap}>
-          <Text style={styles.removeLinkText}>Remove roadmap</Text>
         </TouchableOpacity>
-      )}
-    </ScrollView>
+
+        {stages.map((s, i) => (
+          <View key={i}>
+            <Animated.View style={{ opacity: fadeAnims[i] || 1 }}>
+              <TouchableOpacity
+                style={[shared.card, styles.stageCard]}
+                onPress={() => navigation.navigate('StepDetail', { stageIndex: i })}
+              >
+                <View style={[styles.statusDot, statusDotStyle(getStageStatus(i))]} />
+                <View style={styles.stageTextWrap}>
+                  <Text style={typography.section}>{s.title}</Text>
+                  <Text style={typography.caption}>{statusLabel(getStageStatus(i))}</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {i < stages.length - 1 && (
+              <Animated.View style={[styles.arrowWrap, { opacity: arrowAnims[i] || 1 }]}>
+                <Text style={styles.arrow}>↓</Text>
+              </Animated.View>
+            )}
+          </View>
+        ))}
+
+        {stages.length > 0 && (
+          <TouchableOpacity style={styles.removeLink} onPress={removeRoadmap}>
+            <Text style={styles.removeLinkText}>Remove roadmap</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

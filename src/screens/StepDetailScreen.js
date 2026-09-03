@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
+import { colors, typography, spacing, shared } from '../styles/styles';
 
-export default function StepDetailScreen({ route }) {
+export default function StepDetailScreen({ route, navigation }) {
   const { stageIndex } = route.params;
   const { goal, stages, checkedByStage, toggleTodo } = useCareer();
   const stage = stages[stageIndex];
@@ -28,32 +32,97 @@ export default function StepDetailScreen({ route }) {
     }
   };
 
+  const doneCount = stage.todos.filter((_, i) => checked[i]).length;
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 20 }}>
-      <Text>{stage.title}</Text>
-
-      {stage.todos.map((todo, i) => (
-        <TouchableOpacity key={i} onPress={() => toggleTodo(stageIndex, i)}>
-          <Text>{checked[i] ? '☑' : '☐'} {todo}</Text>
+    <SafeAreaView edges={['top']} style={shared.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backArrow}>←</Text>
+          <Text style={[typography.normal, styles.backLabel]}>Path</Text>
         </TouchableOpacity>
-      ))}
 
-      <TouchableOpacity onPress={elaborateWithAI}>
-        <Text>Elaborate with AI</Text>
-      </TouchableOpacity>
+        <Text style={typography.heading}>{stage.title}</Text>
+        <Text style={[typography.caption, styles.progressText]}>
+          {doneCount} of {stage.todos.length} completed
+        </Text>
 
-      {loading && <ActivityIndicator />}
-
-      {elaborated && (
-        <View>
-          {elaborated.map((item, i) => (
-            <View key={i}>
-              <Text>{item.todo}</Text>
-              <Text>{item.explanation}</Text>
-            </View>
+        <View style={[shared.card, styles.gapBelow]}>
+          {stage.todos.map((todo, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.taskRow, i > 0 && styles.taskRowDivider]}
+              onPress={() => toggleTodo(stageIndex, i)}
+            >
+              <View style={[styles.checkbox, checked[i] && styles.checkboxChecked]}>
+                {checked[i] && <Text style={styles.checkboxTick}>✓</Text>}
+              </View>
+              <Text
+                style={[
+                  typography.normal,
+                  styles.taskLabel,
+                  checked[i] && styles.taskLabelDone,
+                ]}
+              >
+                {todo}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
-      )}
-    </ScrollView>
+
+        <TouchableOpacity
+          style={[shared.primaryButton, styles.gapBelow]}
+          onPress={elaborateWithAI}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={shared.primaryButtonText}>
+              {elaborated ? 'Regenerate Explanations' : 'Elaborate with AI'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {elaborated && (
+          <View style={styles.gapBelow}>
+            {elaborated.map((item, i) => (
+              <View key={i} style={[shared.card, styles.explanationCard]}>
+                <Text style={[typography.normal, styles.explanationTodo]}>{item.todo}</Text>
+                <Text style={[typography.normal, styles.explanationText]}>
+                  {item.explanation}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  backButton: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md,
+    alignSelf: 'flex-start',
+  },
+  backArrow: { fontSize: 20, color: colors.primary, marginRight: 4 },
+  backLabel: { color: colors.primary, fontWeight: '600' },
+  progressText: { marginTop: 2 },
+  gapBelow: { marginTop: spacing.md },
+  taskRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
+  taskRowDivider: { borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,
+    borderColor: colors.placeholder, alignItems: 'center', justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxTick: { color: colors.white, fontSize: 12, fontWeight: '700' },
+  taskLabel: { flex: 1 },
+  taskLabelDone: { color: colors.placeholder, textDecorationLine: 'line-through' },
+  explanationCard: { marginTop: spacing.sm },
+  explanationTodo: { fontWeight: '600', marginBottom: 4 },
+  explanationText: { color: colors.placeholder },
+});

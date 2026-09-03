@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { extractText } from 'expo-pdf-text-extract';
@@ -7,6 +9,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import Pdf from 'react-native-pdf';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
+import { colors, typography, radius, spacing, shared } from '../styles/styles';
 
 export default function ResumeScreen() {
   const {
@@ -26,12 +29,8 @@ export default function ResumeScreen() {
   const [cachedLocalUri, setCachedLocalUri] = useState(null);
   const [downloadingPreview, setDownloadingPreview] = useState(false);
 
-  // For a saved resume (loaded via signed URL), download it privately straight to this device
-  // using expo-file-system — never touches any third-party server. react-native-pdf then reads
-  // it as a local file, which sidesteps the react-native-blob-util bug entirely (that only
-  // breaks on *remote* URL fetches; local files never go through that code path).
   useEffect(() => {
-    if (resumeFile?.uri) return; // just picked locally this session — nothing to download
+    if (resumeFile?.uri) return;
 
     if (!resumeSignedUrl) {
       setCachedLocalUri(null);
@@ -113,63 +112,122 @@ export default function ResumeScreen() {
 
   if (loadingResume) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+      <SafeAreaView style={[shared.screen, styles.centered]}>
+        <ActivityIndicator color={colors.primary} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView>
-      <Text>Resume</Text>
+    <SafeAreaView style={shared.screen} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={typography.heading}>Resume</Text>
 
-      {error && <Text style={{ color: 'red' }}>{error}</Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
-      <TouchableOpacity onPress={pickResume} disabled={extracting || uploading}>
-        <Text>Upload Resume</Text>
-      </TouchableOpacity>
-
-      {downloadingPreview && <Text>Loading preview...</Text>}
-
-      {previewUri && (
-        <>
-          <Text>{displayName}</Text>
-          <View style={{ flex: 1, height: 400 }}>
-            <Pdf
-              source={{ uri: previewUri, cache: false }}
-              style={{ flex: 1 }}
-              onError={(err) => console.log('PDF load error:', err)}
-            />
-          </View>
-        </>
-      )}
-
-      {extracting && <Text>Extracting text...</Text>}
-      {uploading && <Text>Saving resume...</Text>}
-
-      <TouchableOpacity onPress={generateAIFeedback} disabled={!resumeText || stages.length === 0 || loadingFeedback}>
-        <Text>generate AI feedbacks</Text>
-      </TouchableOpacity>
-      {stages.length === 0 && <Text>Generate a career roadmap first on the Path tab.</Text>}
-
-      {loadingFeedback && <ActivityIndicator />}
-
-      {resumeFeedback && (
-        <View>
-          <Text>Match score: {resumeFeedback.matchScore}/100</Text>
-          {resumeFeedback.feedback.map((point, i) => (
-            <Text key={i}>• {point}</Text>
-          ))}
-        </View>
-      )}
-
-      {(resumeFile || resumeSignedUrl) && (
-        <TouchableOpacity onPress={removeResume}>
-          <Text>remove resume</Text>
+        <TouchableOpacity
+          style={[shared.primaryButton, styles.gapBelow]}
+          onPress={pickResume}
+          disabled={extracting || uploading}
+        >
+          <Text style={shared.primaryButtonText}>
+            {previewUri ? 'Replace Resume' : 'Upload Resume'}
+          </Text>
         </TouchableOpacity>
-      )}
+
+        {extracting && <StatusLine text="Extracting text..." />}
+        {uploading && <StatusLine text="Saving resume..." />}
+        {downloadingPreview && <StatusLine text="Loading preview..." />}
+
+        {previewUri && (
+          <View style={[shared.card, styles.previewCard]}>
+            <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
+            <View style={styles.pdfWrap}>
+              <Pdf
+                source={{ uri: previewUri, cache: false }}
+                style={styles.pdf}
+                onError={(err) => console.log('PDF load error:', err)}
+              />
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[shared.primaryButton, styles.gapBelow, (!resumeText || stages.length === 0) && styles.disabledButton]}
+          onPress={generateAIFeedback}
+          disabled={!resumeText || stages.length === 0 || loadingFeedback}
+        >
+          {loadingFeedback ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={shared.primaryButtonText}>Generate AI Feedback</Text>
+          )}
+        </TouchableOpacity>
+
+        {stages.length === 0 && (
+          <Text style={[typography.caption, styles.gapSmall]}>
+            Generate a career roadmap first on the Path tab.
+          </Text>
+        )}
+
+        {resumeFeedback && (
+          <View style={[shared.card, styles.gapBelow]}>
+            <View style={styles.scoreRow}>
+              <Text style={typography.section}>Match Score</Text>
+              <Text style={[typography.heading, styles.scoreValue]}>
+                {resumeFeedback.matchScore}
+                <Text style={typography.caption}>/100</Text>
+              </Text>
+            </View>
+            {resumeFeedback.feedback.map((point, i) => (
+              <View key={i} style={styles.feedbackRow}>
+                <Text style={styles.feedbackBullet}>•</Text>
+                <Text style={[typography.normal, styles.feedbackText]}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {(resumeFile || resumeSignedUrl) && (
+          <TouchableOpacity style={styles.removeLink} onPress={removeResume}>
+            <Text style={styles.removeLinkText}>Remove resume</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function StatusLine({ text }) {
+  return (
+    <View style={styles.statusRow}>
+      <ActivityIndicator size="small" color={colors.placeholder} />
+      <Text style={[typography.caption, styles.statusText]}>{text}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  centered: { alignItems: 'center', justifyContent: 'center' },
+  gapBelow: { marginTop: spacing.md },
+  gapSmall: { marginTop: spacing.xs },
+  errorText: { color: '#DC2626', marginTop: spacing.sm },
+  disabledButton: { backgroundColor: colors.placeholder },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
+  statusText: { marginLeft: spacing.sm },
+  previewCard: { marginTop: spacing.md, padding: spacing.sm },
+  previewName: { marginBottom: spacing.sm, marginLeft: 4 },
+  pdfWrap: { height: 400, borderRadius: radius, overflow: 'hidden' },
+  pdf: { flex: 1 },
+  scoreRow: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  scoreValue: { color: colors.primary },
+  feedbackRow: { flexDirection: 'row', marginTop: 6 },
+  feedbackBullet: { color: colors.primary, marginRight: spacing.sm, fontSize: 16 },
+  feedbackText: { flex: 1 },
+  removeLink: { alignSelf: 'center', marginTop: spacing.lg },
+  removeLinkText: { color: colors.placeholder, fontSize: 13 },
+});

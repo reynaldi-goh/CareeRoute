@@ -6,7 +6,7 @@ const Stack = createNativeStackNavigator();
 
 export default function PathStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PathHome" component={PathScreen} options={{ title: 'Career Path' }} />
       <Stack.Screen name="StepDetail" component={StepDetailScreen} options={{ title: 'Step Detail' }} />
     </Stack.Navigator>
