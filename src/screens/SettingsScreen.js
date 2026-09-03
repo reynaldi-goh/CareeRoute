@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from '../API/supabaseClient';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -106,11 +107,14 @@ export default function SettingsScreen({ navigation }) {
     ]);
   };
 
-    const handleLogout = () => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Auth' }],
-      });
+    const handleLogout = async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        Alert.alert('Logout failed', error.message);
+        return;
+      }
+      // no manual navigation needed — the onAuthStateChange listener in App.js
+      // detects the cleared session and swaps back to the Auth stack automatically
     };
 
   return (

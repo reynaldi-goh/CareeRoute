@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "careeroute",
     "name": "CareeRoute",
     "slug": "CareeRoute",
     "version": "1.0.0",
