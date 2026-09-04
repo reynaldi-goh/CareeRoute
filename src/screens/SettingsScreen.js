@@ -18,6 +18,11 @@ if (Platform.OS === 'android') {
   });
 }
 
+// TODO: swap these text placeholders for real icon components (e.g. @expo/vector-icons)
+// once icon assets are downloaded.
+const ICON_CAMERA = '📷';
+const ICON_EDIT = '✎';
+
 export default function SettingsScreen({ navigation }) {
   const {
     username, email, birthday, notificationsEnabled,
@@ -28,6 +33,7 @@ export default function SettingsScreen({ navigation }) {
   const [avatarUri, setAvatarUri] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
+  const [editingUsername, setEditingUsername] = useState(false);
   const [savingUsername, setSavingUsername] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notifications, setNotifications] = useState(false);
@@ -47,15 +53,24 @@ export default function SettingsScreen({ navigation }) {
   }, []);
 
   const saveUsername = async () => {
-    if (!usernameInput.trim() || usernameInput === username) return;
+    if (!usernameInput.trim() || usernameInput === username) {
+      setEditingUsername(false);
+      return;
+    }
     setSavingUsername(true);
     try {
       await saveProfile({ username: usernameInput.trim() });
+      setEditingUsername(false);
     } catch (err) {
       Alert.alert('Could not save username', err.message);
     } finally {
       setSavingUsername(false);
     }
+  };
+
+  const cancelEditUsername = () => {
+    setUsernameInput(username || '');
+    setEditingUsername(false);
   };
 
   const toggleNotifications = async (value) => {
@@ -162,8 +177,7 @@ export default function SettingsScreen({ navigation }) {
   return (
     <SafeAreaView style={shared.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={typography.heading}>Settings</Text>
-
+        {/* Avatar + camera badge */}
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={choosePhoto} disabled={uploadingAvatar} style={styles.avatarWrap}>
             {avatarUri || avatarPublicUrl ? (
@@ -178,57 +192,89 @@ export default function SettingsScreen({ navigation }) {
                 <ActivityIndicator color={colors.white} />
               </View>
             )}
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarBadgeIcon}>{ICON_CAMERA}</Text>
+            </View>
           </TouchableOpacity>
+
+          {/* Username row, inline-editable */}
+          {editingUsername ? (
+            <View style={styles.usernameEditRow}>
+              <TextInput
+                value={usernameInput}
+                onChangeText={setUsernameInput}
+                placeholder="Username"
+                placeholderTextColor={colors.placeholder}
+                style={styles.usernameInput}
+                autoFocus
+              />
+              {savingUsername ? (
+                <ActivityIndicator color={colors.primary} style={styles.usernameActionIcon} />
+              ) : (
+                <>
+                  <TouchableOpacity onPress={saveUsername} style={styles.usernameActionIcon}>
+                    <Text style={styles.usernameActionText}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={cancelEditUsername} style={styles.usernameActionIcon}>
+                    <Text style={[styles.usernameActionText, styles.cancelText]}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          ) : (
+            <View style={styles.usernameRow}>
+              <Text style={styles.usernameText}>{username || 'Username'}</Text>
+              <TouchableOpacity onPress={() => setEditingUsername(true)} hitSlop={8}>
+                <Text style={styles.editIcon}>{ICON_EDIT}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
-        <Text style={[typography.section, styles.sectionSpacing]}>Profile</Text>
+        {/* Unified profile fields card */}
+        <View style={[shared.card, styles.gapLg]}>
+          <View style={styles.fieldRow}>
+            <View style={styles.fieldTextWrap}>
+              <Text style={typography.caption}>Email</Text>
+              <Text style={[typography.normal, styles.disabledField]}>{email}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => Alert.alert('Coming soon', 'Email changes are not supported yet.')}
+              hitSlop={8}
+            >
+              <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={[shared.card, styles.gapSmall]}>
-          <Text style={typography.caption}>Username</Text>
-          <TextInput
-            value={usernameInput}
-            onChangeText={setUsernameInput}
-            placeholder="Username"
-            placeholderTextColor={colors.placeholder}
-            style={styles.fieldInput}
-          />
-          <TouchableOpacity
-            style={[shared.primaryButton, styles.gapSmall, (savingUsername || usernameInput === username) && styles.disabledButton]}
-            onPress={saveUsername}
-            disabled={savingUsername || usernameInput === username}
-          >
-            {savingUsername ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={shared.primaryButtonText}>Save Username</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.divider} />
+
+          <View style={styles.fieldRow}>
+            <View style={styles.fieldTextWrap}>
+              <Text style={typography.caption}>Password</Text>
+              <Text style={[typography.normal, styles.disabledField]}>········</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => Alert.alert('Coming soon', 'Password changes are not supported yet.')}
+              hitSlop={8}
+            >
+              <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.fieldRow}>
+            <View style={styles.fieldTextWrap}>
+              <Text style={typography.caption}>Birthday</Text>
+              <Text style={typography.normal}>
+                {birthday ? birthday.toDateString() : 'Not set'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} hitSlop={8}>
+              <Text style={styles.editIcon}>{ICON_EDIT}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <View style={[shared.card, styles.gapSmall]}>
-          <Text style={typography.caption}>Email</Text>
-          <TextInput value={email} editable={false} style={[styles.fieldInput, styles.disabledField]} />
-          <Text style={[typography.caption, styles.gapXs]}>Password</Text>
-          <TextInput
-            value="········"
-            editable={false}
-            secureTextEntry
-            style={[styles.fieldInput, styles.disabledField]}
-          />
-          <Text style={[typography.caption, styles.gapXs]}>
-            Email and password changes coming soon.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[shared.card, styles.gapSmall, styles.rowBetween]}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={typography.normal}>Birthday</Text>
-          <Text style={[typography.normal, { color: colors.placeholder }]}>
-            {birthday ? birthday.toDateString() : 'Not set'}
-          </Text>
-        </TouchableOpacity>
 
         {showDatePicker && (
           <DateTimePicker
@@ -249,9 +295,7 @@ export default function SettingsScreen({ navigation }) {
           />
         )}
 
-        <Text style={[typography.section, styles.sectionSpacing]}>Preferences</Text>
-
-        <View style={[shared.card, styles.gapSmall, styles.rowBetween]}>
+        <View style={[shared.card, styles.rowBetween, styles.gapLg]}>
           <Text style={typography.normal}>Notifications</Text>
           <Switch
             value={notifications}
@@ -260,13 +304,7 @@ export default function SettingsScreen({ navigation }) {
           />
         </View>
 
-        <Text style={[typography.section, styles.sectionSpacing]}>More</Text>
-
-        <View style={[shared.card, styles.gapSmall]}>
-          <TouchableOpacity style={styles.listRow}>
-            <Text style={typography.normal}>Help</Text>
-          </TouchableOpacity>
-          <View style={styles.divider} />
+        <View style={[shared.card, styles.gapLg]}>
           <TouchableOpacity style={styles.listRow}>
             <Text style={typography.normal}>About</Text>
           </TouchableOpacity>
@@ -276,8 +314,8 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity style={[shared.dangerButton, styles.logoutButton]} onPress={handleLogout}>
+          <Text style={shared.dangerButtonText}>logout</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -288,26 +326,65 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   centered: { alignItems: 'center', justifyContent: 'center' },
   sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.sm },
-  gapSmall: { marginTop: spacing.sm },
-  gapXs: { marginTop: spacing.xs },
+  gapLg: { marginTop: spacing.lg },
+
   avatarSection: { alignItems: 'center', marginTop: spacing.md },
-  avatarWrap: { width: 100, height: 100, borderRadius: 50, overflow: 'hidden' },
+  avatarWrap: { width: 100, height: 100, borderRadius: 50 },
   avatarImage: { width: 100, height: 100, borderRadius: 50 },
   avatarPlaceholder: {
     backgroundColor: colors.cardBackground, alignItems: 'center', justifyContent: 'center',
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
+    borderRadius: 50,
     backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center',
   },
-  fieldInput: {
-    fontSize: 16, color: colors.text, paddingVertical: 4,
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  avatarBadgeIcon: { fontSize: 13 },
+
+  usernameRow: {
+    flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: spacing.xs,
+  },
+  usernameText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  editIcon: { fontSize: 15, color: colors.primary, marginLeft: spacing.xs },
+  editIconDisabled: { color: colors.placeholder },
+
+  usernameEditRow: {
+    flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, width: '100%', paddingHorizontal: spacing.lg,
+  },
+  usernameInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary,
+    paddingVertical: 2,
+  },
+  usernameActionIcon: { marginLeft: spacing.sm },
+  usernameActionText: { color: colors.primary, fontWeight: '600', fontSize: 13 },
+  cancelText: { color: colors.placeholder },
+
+  fieldRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  fieldTextWrap: { flex: 1 },
   disabledField: { color: colors.placeholder },
+
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listRow: { paddingVertical: spacing.sm },
-  divider: { height: 1, backgroundColor: '#E5E7EB' },
-  disabledButton: { backgroundColor: colors.placeholder },
-  logoutButton: { alignItems: 'center', marginTop: spacing.xl },
-  logoutText: { color: '#DC2626', fontSize: 16, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: spacing.sm },
+
+  logoutButton: { marginTop: spacing.xl },
 });

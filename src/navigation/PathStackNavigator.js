@@ -1,14 +1,18 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import PathScreen from '../screens/PathScreen';
+import PathGateScreen from '../screens/PathGateScreen';
+import PathPromptScreen from '../screens/PathPromptScreen';
+import PathDiagramScreen from '../screens/PathDiagramScreen';
 import StepDetailScreen from '../screens/StepDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function PathStack() {
+export default function PathStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="PathHome" component={PathScreen} options={{ title: 'Career Path' }} />
-      <Stack.Screen name="StepDetail" component={StepDetailScreen} options={{ title: 'Step Detail' }} />
+      <Stack.Screen name="PathGate" component={PathGateScreen} />
+      <Stack.Screen name="PathPrompt" component={PathPromptScreen} />
+      <Stack.Screen name="PathDiagram" component={PathDiagramScreen} />
+      <Stack.Screen name="StepDetail" component={StepDetailScreen} />
     </Stack.Navigator>
   );
 }

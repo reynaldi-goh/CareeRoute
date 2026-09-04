@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 export const colors = {
   cardBackground: '#F8F9FA',
   primary: '#3B82F6',
+  danger: '#F87171',
   text: '#000000',
   placeholder: '#6B7280',
   white: '#FFFFFF',
@@ -39,11 +40,23 @@ export const shared = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: radius,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dangerButton: {
+    backgroundColor: colors.danger,
+    borderRadius: radius,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: '600',

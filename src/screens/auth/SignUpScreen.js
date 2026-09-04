@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../API/supabaseClient';
-import { colors, typography, spacing, shared } from '../../styles/styles';
+import { colors, spacing, shared } from '../../styles/styles';
 
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -47,78 +47,97 @@ export default function SignUpScreen({ navigation }) {
   return (
     <SafeAreaView style={shared.screen}>
       <View style={styles.content}>
-        <Text style={typography.heading}>Sign Up</Text>
-        <Text style={[typography.caption, styles.subtitle]}>
-          Create an account to start building your roadmap.
-        </Text>
-
-        <View style={styles.form}>
-          <Text style={typography.caption}>Email</Text>
-          <TextInput
-            placeholder="you@example.com"
-            placeholderTextColor={colors.placeholder}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={[shared.input, styles.gapXs]}
+        <View style={styles.card}>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
           />
 
-          <Text style={[typography.caption, styles.gapSmall]}>Password</Text>
-          <TextInput
-            placeholder="••••••••"
-            placeholderTextColor={colors.placeholder}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={[shared.input, styles.gapXs]}
-          />
+          <View style={styles.form}>
+            <TextInput
+              placeholder="email address"
+              placeholderTextColor={colors.placeholder}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={styles.input}
+            />
 
-          <Text style={[typography.caption, styles.gapSmall]}>Confirm Password</Text>
-          <TextInput
-            placeholder="••••••••"
-            placeholderTextColor={colors.placeholder}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            style={[shared.input, styles.gapXs]}
-          />
+            <TextInput
+              placeholder="password"
+              placeholderTextColor={colors.placeholder}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              style={[styles.input, styles.gapSmall]}
+            />
+
+            <TextInput
+              placeholder="confirm password"
+              placeholderTextColor={colors.placeholder}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              style={[styles.input, styles.gapSmall]}
+            />
+          </View>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
+          {message && <Text style={styles.successText}>{message}</Text>}
+
+          <TouchableOpacity
+            style={[shared.primaryButton, styles.buttonSpacing]}
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={shared.primaryButtonText}>register</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.linkWrap} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.linkText}>
+              Already have account? <Text style={styles.linkAccent}>Login here</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        {message && <Text style={styles.successText}>{message}</Text>}
-
-        <TouchableOpacity
-          style={[shared.primaryButton, styles.gapBelow]}
-          onPress={handleSignUp}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={shared.primaryButtonText}>Register</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.linkWrap} onPress={() => navigation.navigate('Login')}>
-          <Text style={typography.caption}>
-            Already have an account? <Text style={styles.linkAccent}>Log in</Text>
-          </Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, padding: spacing.md, justifyContent: 'center' },
-  subtitle: { marginTop: spacing.xs },
-  form: { marginTop: spacing.lg },
-  gapXs: { marginTop: spacing.xs },
-  gapSmall: { marginTop: spacing.md },
-  gapBelow: { marginTop: spacing.lg },
-  errorText: { color: '#DC2626', marginTop: spacing.sm },
-  successText: { color: '#16A34A', marginTop: spacing.sm },
-  linkWrap: { alignSelf: 'center', marginTop: spacing.lg },
-  linkAccent: { color: colors.primary, fontWeight: '600' },
+  content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl, justifyContent: 'flex-start', alignItems: 'center' },
+  card: {
+    width: '100%',
+    maxWidth: 460,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  logo: { width: 350, height: 200, marginTop: spacing.sm, marginBottom: spacing.sm },
+  form: { width: '100%', marginTop: spacing.xl },
+  input: {
+    width: '100%',
+    color: 'black',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 24,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    fontSize: 14,
+  },
+  gapSmall: { marginTop: spacing.lg },
+  buttonSpacing: { width: '100%', marginTop: spacing.xl },
+  errorText: { color: '#DC2626', marginTop: spacing.md, alignSelf: 'flex-start' },
+  successText: { color: '#16A34A', marginTop: spacing.md, alignSelf: 'flex-start' },
+  linkWrap: { marginTop: spacing.md },
+  linkText: { fontSize: 12, color: colors.text },
+  linkAccent: { color: colors.primary, fontWeight: '600', textDecorationLine: 'underline' },
 });
