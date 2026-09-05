@@ -7,9 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../API/supabaseClient';
 import { useProfile } from '../context/ProfileContext';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
+import Button from '../components/Button';
+import LoadingScreen from '../components/LoadingScreen';
+import { confirmAction } from '../utils/confirmAction';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -27,8 +31,6 @@ if (Platform.OS === 'android') {
   });
 }
 
-// TODO: swap these text placeholders for real icon components (e.g. @expo/vector-icons)
-// once icon assets are downloaded.
 const ICON_CAMERA = '📷';
 const ICON_EDIT = '✎';
 
@@ -160,6 +162,7 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const choosePhoto = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert('Profile Photo', 'Choose an option', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Camera', onPress: takeProfilePhoto },
@@ -167,28 +170,38 @@ export default function SettingsScreen({ navigation }) {
     ]);
   };
 
-  const handleLogout = async () => {
+  const doLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert('Logout failed', error.message);
-      return;
     }
   };
 
+  const handleLogout = () => {
+    confirmAction({
+      title: 'Log out?',
+      message: "You'll need to sign back in to access your roadmap and resume.",
+      confirmLabel: 'Log out',
+      onConfirm: doLogout,
+    });
+  };
+
   if (loadingProfile) {
-    return (
-      <SafeAreaView style={[shared.screen, styles.centered]}>
-        <ActivityIndicator color={colors.primary} />
-      </SafeAreaView>
-    );
+    return <LoadingScreen label="Loading your profile" />;
   }
 
   return (
     <SafeAreaView style={shared.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Avatar + camera badge */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={choosePhoto} disabled={uploadingAvatar} style={styles.avatarWrap}>
+          <TouchableOpacity
+            onPress={choosePhoto}
+            disabled={uploadingAvatar}
+            style={styles.avatarWrap}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+            accessibilityState={{ busy: uploadingAvatar }}
+          >
             {avatarUri || avatarPublicUrl ? (
               <Image source={{ uri: avatarUri || avatarPublicUrl }} style={styles.avatarImage} />
             ) : (
@@ -206,7 +219,6 @@ export default function SettingsScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          {/* Username row, inline-editable */}
           {editingUsername ? (
             <View style={styles.usernameEditRow}>
               <TextInput
@@ -216,15 +228,29 @@ export default function SettingsScreen({ navigation }) {
                 placeholderTextColor={colors.placeholder}
                 style={styles.usernameInput}
                 autoFocus
+                accessibilityLabel="Edit username"
               />
               {savingUsername ? (
                 <ActivityIndicator color={colors.primary} style={styles.usernameActionIcon} />
               ) : (
                 <>
-                  <TouchableOpacity onPress={saveUsername} style={styles.usernameActionIcon}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      saveUsername();
+                    }}
+                    style={styles.usernameActionIcon}
+                    accessibilityRole="button"
+                    accessibilityLabel="Save username"
+                  >
                     <Text style={styles.usernameActionText}>Save</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={cancelEditUsername} style={styles.usernameActionIcon}>
+                  <TouchableOpacity
+                    onPress={cancelEditUsername}
+                    style={styles.usernameActionIcon}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel editing username"
+                  >
                     <Text style={[styles.usernameActionText, styles.cancelText]}>Cancel</Text>
                   </TouchableOpacity>
                 </>
@@ -233,14 +259,18 @@ export default function SettingsScreen({ navigation }) {
           ) : (
             <View style={styles.usernameRow}>
               <Text style={styles.usernameText}>{username || 'Username'}</Text>
-              <TouchableOpacity onPress={() => setEditingUsername(true)} hitSlop={8}>
+              <TouchableOpacity
+                onPress={() => setEditingUsername(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Edit username"
+              >
                 <Text style={styles.editIcon}>{ICON_EDIT}</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* Unified profile fields card */}
         <View style={[shared.card, styles.gapLg]}>
           <View style={styles.fieldRow}>
             <View style={styles.fieldTextWrap}>
@@ -250,6 +280,8 @@ export default function SettingsScreen({ navigation }) {
             <TouchableOpacity
               onPress={() => Alert.alert('Coming soon', 'Email changes are not supported yet.')}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit email, coming soon"
             >
               <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
             </TouchableOpacity>
@@ -265,6 +297,8 @@ export default function SettingsScreen({ navigation }) {
             <TouchableOpacity
               onPress={() => Alert.alert('Coming soon', 'Password changes are not supported yet.')}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit password, coming soon"
             >
               <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
             </TouchableOpacity>
@@ -279,7 +313,12 @@ export default function SettingsScreen({ navigation }) {
                 {birthday ? birthday.toDateString() : 'Not set'}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit birthday"
+            >
               <Text style={styles.editIcon}>{ICON_EDIT}</Text>
             </TouchableOpacity>
           </View>
@@ -310,22 +349,34 @@ export default function SettingsScreen({ navigation }) {
             value={notifications}
             onValueChange={toggleNotifications}
             trackColor={{ true: colors.primary }}
+            accessibilityLabel="Toggle notifications"
+            accessibilityRole="switch"
           />
         </View>
 
         <View style={[shared.card, styles.gapLg]}>
-          <TouchableOpacity style={styles.listRow} onPress={() => navigation.navigate('About')}>
+          <TouchableOpacity
+            style={styles.listRow}
+            onPress={() => navigation.navigate('About')}
+            accessibilityRole="button"
+            accessibilityLabel="About"
+          >
             <Text style={typography.normal}>About</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.listRow} onPress={() => navigation.navigate('PrivacyPolicy')}>
+          <TouchableOpacity
+            style={styles.listRow}
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+            accessibilityRole="button"
+            accessibilityLabel="Privacy Policy"
+          >
             <Text style={typography.normal}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[shared.dangerButton, styles.logoutButton]} onPress={handleLogout}>
-          <Text style={shared.dangerButtonText}>logout</Text>
-        </TouchableOpacity>
+        <View style={styles.logoutButton}>
+          <Button label="logout" variant="danger" onPress={handleLogout} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -333,7 +384,6 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
-  centered: { alignItems: 'center', justifyContent: 'center' },
   sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.sm },
   gapLg: { marginTop: spacing.lg },
 

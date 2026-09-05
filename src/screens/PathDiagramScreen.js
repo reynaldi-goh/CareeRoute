@@ -2,8 +2,11 @@ import { useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { useCareer } from '../context/CareerContext';
 import { colors, typography, spacing, shared, radius } from '../styles/styles';
+import Button from '../components/Button';
+import { confirmAction } from '../utils/confirmAction';
 
 export default function PathDiagramScreen({ navigation }) {
   const { goal, stages, getStageStatus, removeRoadmap } = useCareer();
@@ -14,10 +17,6 @@ export default function PathDiagramScreen({ navigation }) {
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef(null);
-
-  // Set to true right before pushing StepDetail — tells the next focus effect
-  // to skip the reveal and just show the settled state, since the user is
-  // simply returning to a screen they were already looking at.
   const skipNextRevealRef = useRef(false);
 
   const startPulseLoop = () => {
@@ -40,7 +39,6 @@ export default function PathDiagramScreen({ navigation }) {
 
       if (skipNextRevealRef.current) {
         skipNextRevealRef.current = false;
-        // jump straight to end-state, no animation — just returning from StepDetail
         fadeAnims.forEach((v) => v.setValue(1));
         slideAnims.forEach((v) => v.setValue(0));
         arrowAnims.forEach((v) => v.setValue(1));
@@ -55,7 +53,6 @@ export default function PathDiagramScreen({ navigation }) {
         };
       }
 
-      // fresh arrival (from another tab, or a newly generated roadmap) — play the full reveal
       fadeAnims.forEach((v) => v.setValue(0));
       slideAnims.forEach((v) => v.setValue(16));
       arrowAnims.forEach((v) => v.setValue(0));
@@ -88,6 +85,20 @@ export default function PathDiagramScreen({ navigation }) {
     }, [stages])
   );
 
+  const handleEdit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate('PathPrompt');
+  };
+
+  const handleRemoveRoadmap = () => {
+    confirmAction({
+      title: 'Remove roadmap?',
+      message: 'This will delete your current roadmap and all progress on it.',
+      confirmLabel: 'Remove',
+      onConfirm: removeRoadmap,
+    });
+  };
+
   if (stages.length === 0) return null;
 
   return (
@@ -98,7 +109,12 @@ export default function PathDiagramScreen({ navigation }) {
             <Text style={typography.caption}>Career Goal</Text>
             <Text style={typography.heading}>{goal}</Text>
           </View>
-          <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('PathPrompt')}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={handleEdit}
+            accessibilityRole="button"
+            accessibilityLabel="Edit career goal"
+          >
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
@@ -131,9 +147,12 @@ export default function PathDiagramScreen({ navigation }) {
                       status === 'upcoming' && styles.stageCardUpcoming,
                     ]}
                     onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       skipNextRevealRef.current = true;
                       navigation.navigate('StepDetail', { stageIndex: i });
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${s.title}, ${status}`}
                   >
                     <Text
                       style={[
@@ -176,9 +195,9 @@ export default function PathDiagramScreen({ navigation }) {
           );
         })}
 
-        <TouchableOpacity style={[shared.dangerButton, styles.removeButton]} onPress={removeRoadmap}>
-          <Text style={shared.dangerButtonText}>remove roadmap</Text>
-        </TouchableOpacity>
+        <View style={styles.removeButton}>
+          <Button label="remove roadmap" variant="danger" onPress={handleRemoveRoadmap} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -227,5 +246,5 @@ const styles = StyleSheet.create({
   arrowWrap: { alignItems: 'center', paddingVertical: 2 },
   arrow: { fontSize: 20, color: colors.placeholder },
 
-  removeButton: { width: '100%', marginTop: spacing.xl },
+  removeButton: { marginTop: spacing.xl },
 });

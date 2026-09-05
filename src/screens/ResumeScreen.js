@@ -7,9 +7,13 @@ import * as DocumentPicker from 'expo-document-picker';
 import { extractText } from 'expo-pdf-text-extract';
 import * as FileSystem from 'expo-file-system/legacy';
 import Pdf from 'react-native-pdf';
+import * as Haptics from 'expo-haptics';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
+import Button from '../components/Button';
+import LoadingScreen from '../components/LoadingScreen';
+import { confirmAction } from '../utils/confirmAction';
 
 export default function ResumeScreen() {
   const {
@@ -57,6 +61,7 @@ export default function ResumeScreen() {
   }, [resumeSignedUrl, resumeFile]);
 
   const pickResume = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
     if (result.canceled) return;
 
@@ -88,23 +93,46 @@ export default function ResumeScreen() {
   };
 
   const generateAIFeedback = async () => {
-    setLoadingFeedback(true);
-    setError(null);
-    try {
-      const skillsList = stages.flatMap((s) => s.todos).join(', ');
+    const run = async () => {
+      setLoadingFeedback(true);
+      setError(null);
+      try {
+        const skillsList = stages.flatMap((s) => s.todos).join(', ');
 
-      const parsed = await askAI(
-        'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-10, whole number), "feedback": string[]}',
-        `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList || 'not yet defined'}`
-      );
+        const parsed = await askAI(
+          'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-10, whole number), "feedback": string[]}',
+          `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList || 'not yet defined'}`
+        );
 
-      await saveResumeFeedback(parsed.matchScore, parsed.feedback);
-    } catch (err) {
-      console.log('ERROR:', err.message);
-      setError(err.message || 'Something went wrong generating feedback.');
-    } finally {
-      setLoadingFeedback(false);
+        await saveResumeFeedback(parsed.matchScore, parsed.feedback);
+      } catch (err) {
+        console.log('ERROR:', err.message);
+        setError(err.message || 'Something went wrong generating feedback.');
+      } finally {
+        setLoadingFeedback(false);
+      }
+    };
+
+    // Regenerating discards any existing feedback, so confirm if there's something to lose
+    if (resumeFeedback) {
+      confirmAction({
+        title: 'Regenerate feedback?',
+        message: 'This will replace your current AI feedback and score.',
+        confirmLabel: 'Regenerate',
+        onConfirm: run,
+      });
+    } else {
+      run();
     }
+  };
+
+  const handleRemoveResume = () => {
+    confirmAction({
+      title: 'Remove resume?',
+      message: 'This will delete your uploaded resume and any AI feedback on it.',
+      confirmLabel: 'Remove',
+      onConfirm: removeResume,
+    });
   };
 
   const previewUri = resumeFile?.uri || cachedLocalUri;
@@ -112,28 +140,24 @@ export default function ResumeScreen() {
   const busy = extracting || uploading;
 
   if (loadingResume) {
-    return (
-      <SafeAreaView style={[shared.screen, styles.centered]}>
-        <ActivityIndicator color={colors.primary} />
-      </SafeAreaView>
-    );
+    return <LoadingScreen label="Loading your resume" />;
   }
 
   return (
     <SafeAreaView style={shared.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
 
-        {/* -------------------------
-            No resume yet — big tappable upload box
-        ------------------------- */}
         {!previewUri && !downloadingPreview && (
           <TouchableOpacity
             style={[styles.uploadBox, styles.gapBelow]}
             onPress={pickResume}
             disabled={busy}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Upload your resume as a PDF"
+            accessibilityState={{ disabled: busy, busy }}
           >
             {busy ? (
               <>
@@ -151,24 +175,24 @@ export default function ResumeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* -------------------------
-            Fetching a previously-saved resume for preview
-        ------------------------- */}
         {!previewUri && downloadingPreview && (
-          <View style={[styles.uploadBox, styles.gapBelow]}>
+          <View style={[styles.uploadBox, styles.gapBelow]} accessible accessibilityLabel="Loading preview">
             <ActivityIndicator color={colors.placeholder} />
             <Text style={styles.uploadCaption}>Loading preview...</Text>
           </View>
         )}
 
-        {/* -------------------------
-            Resume uploaded — preview card
-        ------------------------- */}
         {previewUri && (
           <View style={[shared.card, styles.previewCard, styles.gapBelow]}>
             <View style={styles.previewHeaderRow}>
               <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
-              <TouchableOpacity onPress={pickResume} disabled={busy}>
+              <TouchableOpacity
+                onPress={pickResume}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Replace resume"
+                accessibilityState={{ disabled: busy, busy }}
+              >
                 <Text style={styles.replaceLink}>
                   {busy ? (extracting ? 'Extracting...' : 'Saving...') : 'Replace'}
                 </Text>
@@ -185,17 +209,14 @@ export default function ResumeScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[shared.primaryButton, styles.gapBelow, (!resumeText || stages.length === 0) && styles.disabledButton]}
-          onPress={generateAIFeedback}
-          disabled={!resumeText || stages.length === 0 || loadingFeedback}
-        >
-          {loadingFeedback ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={shared.primaryButtonText}>generate AI feedbacks</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.gapBelow}>
+          <Button
+            label="generate AI feedbacks"
+            onPress={generateAIFeedback}
+            loading={loadingFeedback}
+            disabled={!resumeText || stages.length === 0}
+          />
+        </View>
 
         {stages.length === 0 && (
           <Text style={[typography.caption, styles.gapSmall]}>
@@ -226,9 +247,9 @@ export default function ResumeScreen() {
         )}
 
         {(resumeFile || resumeSignedUrl) && (
-          <TouchableOpacity style={[shared.dangerButton, styles.gapBelow]} onPress={removeResume}>
-            <Text style={shared.dangerButtonText}>remove resume</Text>
-          </TouchableOpacity>
+          <View style={styles.gapBelow}>
+            <Button label="remove resume" variant="danger" onPress={handleRemoveResume} />
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -237,12 +258,10 @@ export default function ResumeScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
-  centered: { alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
   gapBelow: { marginTop: spacing.lg },
   gapSmall: { marginTop: spacing.xs },
   errorText: { color: '#DC2626', marginTop: spacing.sm },
-  disabledButton: { backgroundColor: colors.placeholder },
 
   uploadBox: {
     height: 220,

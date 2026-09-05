@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch,
-  StyleSheet, KeyboardAvoidingView, Platform, Image,
+  View, Text, TextInput, Switch, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 import { colors, typography, spacing, shared } from '../styles/styles';
+import Button from '../components/Button';
+import BackLink from '../components/BackLink';
+import { confirmAction } from '../utils/confirmAction';
 
 export default function PathPromptScreen({ navigation }) {
   const { goal, setGoal, stages, saveRoadmap, resumeText } = useCareer();
@@ -23,11 +25,7 @@ export default function PathPromptScreen({ navigation }) {
   const hasExistingRoadmap = stages.length > 0;
   const includeResume = useResume && !!resumeText;
 
-  const generateRoadmap = async () => {
-    if (!input.trim()) {
-      setError("Tell us what career you're aiming for first.");
-      return;
-    }
+  const runGenerate = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -66,13 +64,31 @@ export default function PathPromptScreen({ navigation }) {
     }
   };
 
+  const generateRoadmap = () => {
+    if (!input.trim()) {
+      setError("Tell us what career you're aiming for first.");
+      return;
+    }
+    setError(null);
+
+    if (hasExistingRoadmap) {
+      confirmAction({
+        title: 'Regenerate roadmap?',
+        message: 'This will replace your current roadmap and all progress on it.',
+        confirmLabel: 'Regenerate',
+        onConfirm: runGenerate,
+      });
+    } else {
+      runGenerate();
+    }
+  };
+
   return (
     <SafeAreaView edges={['top']} style={shared.screen}>
       {hasExistingRoadmap && (
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={[typography.normal, styles.backLabel]}>Path</Text>
-        </TouchableOpacity>
+        <View style={styles.backWrap}>
+          <BackLink label="Path" onPress={() => navigation.goBack()} />
+        </View>
       )}
 
       <KeyboardAvoidingView
@@ -83,6 +99,7 @@ export default function PathPromptScreen({ navigation }) {
           source={require('../../assets/logo.png')}
           style={styles.logo}
           resizeMode="contain"
+          accessibilityLabel="CareeRoute logo"
         />
 
         <View style={styles.inputWrap}>
@@ -94,6 +111,7 @@ export default function PathPromptScreen({ navigation }) {
             placeholderTextColor={colors.placeholder}
             multiline
             style={styles.bigInput}
+            accessibilityLabel="Career goal input"
           />
         </View>
 
@@ -102,7 +120,13 @@ export default function PathPromptScreen({ navigation }) {
             <Text style={[typography.normal, { color: useResume ? colors.primary : colors.placeholder }]}>
               {useResume ? 'Using your uploaded resume' : 'Not using your resume'}
             </Text>
-            <Switch value={useResume} onValueChange={setUseResume} trackColor={{ true: colors.primary }} />
+            <Switch
+              value={useResume}
+              onValueChange={setUseResume}
+              trackColor={{ true: colors.primary }}
+              accessibilityLabel="Use uploaded resume"
+              accessibilityRole="switch"
+            />
           </View>
         )}
         {!resumeText && (
@@ -111,52 +135,31 @@ export default function PathPromptScreen({ navigation }) {
           </Text>
         )}
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
 
-        <TouchableOpacity
-          style={[shared.primaryButton, styles.gapBelow]}
-          onPress={generateRoadmap}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={shared.primaryButtonText}>
-              {hasExistingRoadmap ? 'regenerate roadmap' : 'generate roadmap'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.gapBelow}>
+          <Button
+            label={hasExistingRoadmap ? 'regenerate roadmap' : 'generate roadmap'}
+            onPress={generateRoadmap}
+            loading={loading}
+          />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  backWrap: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   content: { flex: 1, padding: spacing.md, justifyContent: 'flex-start' },
   logo: { width: 350, height: 200, alignSelf: 'center', marginBottom: spacing.md },
   inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 24,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: '#D1D5DB',
+    borderRadius: 24, paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.white,
   },
   inputIcon: { fontSize: 16, marginRight: spacing.sm, marginTop: 2 },
-  bigInput: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.text,
-    minHeight: 50,
-    textAlignVertical: 'top',
-    padding: 0,
-  },
+  bigInput: { flex: 1, fontSize: 14, color: colors.text, minHeight: 50, textAlignVertical: 'top', padding: 0 },
   gapBelow: { marginTop: spacing.lg },
   resumeToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   errorText: { color: '#DC2626', marginTop: spacing.sm },
-  backButton: { flexDirection: 'row', alignItems: 'center', margin: spacing.md, alignSelf: 'flex-start' },
-  backArrow: { fontSize: 20, color: colors.primary, marginRight: 4 },
-  backLabel: { color: colors.primary, fontWeight: '600' },
 });

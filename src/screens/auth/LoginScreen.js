@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../API/supabaseClient';
 import { colors, spacing, shared } from '../../styles/styles';
+import Button from '../../components/Button';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -30,11 +31,11 @@ export default function LoginScreen({ navigation }) {
     <SafeAreaView style={shared.screen}>
       <View style={styles.content}>
         <View style={styles.card}>
-
           <Image
             source={require('../../../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
+            accessibilityLabel="CareeRoute logo"
           />
 
           <View style={styles.form}>
@@ -47,6 +48,7 @@ export default function LoginScreen({ navigation }) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 style={styles.input}
+                accessibilityLabel="Email address"
               />
             </View>
 
@@ -58,25 +60,23 @@ export default function LoginScreen({ navigation }) {
                 onChangeText={setPassword}
                 secureTextEntry
                 style={styles.input}
+                accessibilityLabel="Password"
               />
             </View>
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
+
+          <View style={styles.buttonSpacing}>
+            <Button label="login" onPress={handleLogin} loading={loading} />
+          </View>
 
           <TouchableOpacity
-            style={[shared.primaryButton, styles.buttonSpacing]}
-            onPress={handleLogin}
-            disabled={loading}
+            style={styles.linkWrap}
+            onPress={() => navigation.navigate('SignUp')}
+            accessibilityRole="button"
+            accessibilityLabel="Don't have an account? Register here"
           >
-            {loading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={shared.primaryButtonText}>login</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.linkWrap} onPress={() => navigation.navigate('SignUp')}>
             <Text style={styles.linkText}>
               Don't have account? <Text style={styles.linkAccent}>Register here</Text>
             </Text>
@@ -90,30 +90,13 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl, justifyContent: 'flex-start', alignItems: 'center' },
   card: {
-    width: '100%',
-    maxWidth: 460,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
+    width: '100%', maxWidth: 460, backgroundColor: colors.white, borderRadius: 16,
+    paddingVertical: spacing.xl, paddingHorizontal: spacing.md, alignItems: 'center',
   },
   logo: { width: 350, height: 200, marginTop: spacing.sm, marginBottom: spacing.sm },
   form: { width: '100%', marginTop: spacing.xl },
-  inputWrap: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  input: {
-    width: '100%',
-    color: 'black',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    fontSize: 14,
-  },
+  inputWrap: { width: '100%', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 24, overflow: 'hidden' },
+  input: { width: '100%', color: 'black', paddingVertical: spacing.md, paddingHorizontal: spacing.md, fontSize: 14 },
   gapSmall: { marginTop: spacing.lg },
   buttonSpacing: { width: '100%', marginTop: spacing.xl },
   errorText: { color: '#DC2626', marginTop: spacing.md, alignSelf: 'flex-start' },

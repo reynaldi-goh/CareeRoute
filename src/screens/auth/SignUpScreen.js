@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../API/supabaseClient';
 import { colors, spacing, shared } from '../../styles/styles';
+import Button from '../../components/Button';
 
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -52,6 +53,7 @@ export default function SignUpScreen({ navigation }) {
             source={require('../../../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
+            accessibilityLabel="CareeRoute logo"
           />
 
           <View style={styles.form}>
@@ -63,6 +65,7 @@ export default function SignUpScreen({ navigation }) {
               autoCapitalize="none"
               keyboardType="email-address"
               style={styles.input}
+              accessibilityLabel="Email address"
             />
 
             <TextInput
@@ -72,6 +75,7 @@ export default function SignUpScreen({ navigation }) {
               onChangeText={setPassword}
               secureTextEntry
               style={[styles.input, styles.gapSmall]}
+              accessibilityLabel="Password"
             />
 
             <TextInput
@@ -81,25 +85,23 @@ export default function SignUpScreen({ navigation }) {
               onChangeText={setConfirmPassword}
               secureTextEntry
               style={[styles.input, styles.gapSmall]}
+              accessibilityLabel="Confirm password"
             />
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
-          {message && <Text style={styles.successText}>{message}</Text>}
+          {error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
+          {message && <Text style={styles.successText} accessibilityRole="alert">{message}</Text>}
+
+          <View style={styles.buttonSpacing}>
+            <Button label="register" onPress={handleSignUp} loading={loading} />
+          </View>
 
           <TouchableOpacity
-            style={[shared.primaryButton, styles.buttonSpacing]}
-            onPress={handleSignUp}
-            disabled={loading}
+            style={styles.linkWrap}
+            onPress={() => navigation.navigate('Login')}
+            accessibilityRole="button"
+            accessibilityLabel="Already have an account? Login here"
           >
-            {loading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={shared.primaryButtonText}>register</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.linkWrap} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.linkText}>
               Already have account? <Text style={styles.linkAccent}>Login here</Text>
             </Text>
@@ -113,25 +115,14 @@ export default function SignUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl, justifyContent: 'flex-start', alignItems: 'center' },
   card: {
-    width: '100%',
-    maxWidth: 460,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
+    width: '100%', maxWidth: 460, backgroundColor: colors.white, borderRadius: 16,
+    paddingVertical: spacing.xl, paddingHorizontal: spacing.md, alignItems: 'center',
   },
   logo: { width: 350, height: 200, marginTop: spacing.sm, marginBottom: spacing.sm },
   form: { width: '100%', marginTop: spacing.xl },
   input: {
-    width: '100%',
-    color: 'black',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 24,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    fontSize: 14,
+    width: '100%', color: 'black', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 24,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.md, fontSize: 14,
   },
   gapSmall: { marginTop: spacing.lg },
   buttonSpacing: { width: '100%', marginTop: spacing.xl },

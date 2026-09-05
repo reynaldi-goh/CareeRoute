@@ -1,22 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 import { colors, typography, spacing, shared } from '../styles/styles';
+import Button from '../components/Button';
+import BackLink from '../components/BackLink';
 
 export default function StepDetailScreen({ route, navigation }) {
   const { stageIndex } = route.params;
   const { goal, stages, checkedByStage, toggleTodo } = useCareer();
+
   const stage = stages[stageIndex];
   const checked = checkedByStage[stageIndex] || {};
 
   const [elaborated, setElaborated] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const doneCount = stage ? stage.todos.filter((_, i) => checked[i]).length : 0;
+  const progressPct = stage && stage.todos.length > 0
+    ? Math.round((doneCount / stage.todos.length) * 100)
+    : 0;
+
+  const handleBack = () => {
+    navigation.navigate('PathDiagram');
+  };
+
+  const borderAnim = useRef(new Animated.Value(0)).current;
+  const wasComplete = useRef(progressPct === 100);
+
+  useEffect(() => {
+    const justCompleted = progressPct === 100 && !wasComplete.current;
+    wasComplete.current = progressPct === 100;
+
+    if (!justCompleted) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    Animated.sequence([
+      Animated.timing(borderAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
+      Animated.delay(600),
+      Animated.timing(borderAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
+    ]).start();
+  }, [progressPct]);
+
+  const animatedBorderColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.cardBorder || '#E5E7EB', '#22C55E'],
+  });
+
+  useEffect(() => {
+    if (!stage) {
+      navigation.navigate('PathDiagram');
+    }
+  }, [stage]);
+
+  const handleToggleTodo = (i) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleTodo(stageIndex, i);
+  };
+
   const elaborateWithAI = async () => {
+    if (!stage) return;
     setLoading(true);
     try {
       const parsed = await askAI(
@@ -32,20 +80,20 @@ export default function StepDetailScreen({ route, navigation }) {
     }
   };
 
-  const doneCount = stage.todos.filter((_, i) => checked[i]).length;
-  const progressPct = stage.todos.length > 0
-    ? Math.round((doneCount / stage.todos.length) * 100)
-    : 0;
+  if (!stage) return null;
 
   return (
     <SafeAreaView edges={['top']} style={shared.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={[typography.normal, styles.backLabel]}>Path</Text>
-        </TouchableOpacity>
-        
-        <View style={[shared.card, styles.stageCard]}>
+        <BackLink label="Path" onPress={handleBack} />
+
+        <Animated.View
+          style={[
+            shared.card,
+            styles.stageCard,
+            { borderColor: animatedBorderColor, borderWidth: 1.5 },
+          ]}
+        >
           <Text style={styles.stageTitle}>{stage.title}</Text>
           <Text style={styles.progressText}>Progress: {progressPct}%</Text>
 
@@ -54,7 +102,10 @@ export default function StepDetailScreen({ route, navigation }) {
             <TouchableOpacity
               key={i}
               style={styles.taskRow}
-              onPress={() => toggleTodo(stageIndex, i)}
+              onPress={() => handleToggleTodo(i)}
+              accessibilityRole="checkbox"
+              accessibilityLabel={todo}
+              accessibilityState={{ checked: !!checked[i] }}
             >
               <View style={[styles.checkbox, checked[i] && styles.checkboxChecked]}>
                 {checked[i] && <Text style={styles.checkboxTick}>✓</Text>}
@@ -62,21 +113,15 @@ export default function StepDetailScreen({ route, navigation }) {
               <Text style={[typography.normal, styles.taskLabel]}>{todo}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </Animated.View>
 
-        <TouchableOpacity
-          style={[shared.primaryButton, styles.gapBelow]}
-          onPress={elaborateWithAI}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={shared.primaryButtonText}>
-              {elaborated ? 'regenerate explanations' : 'elaborate with AI'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.gapBelow}>
+          <Button
+            label={elaborated ? 'regenerate explanations' : 'elaborate with AI'}
+            onPress={elaborateWithAI}
+            loading={loading}
+          />
+        </View>
 
         {elaborated && (
           <View style={styles.gapBelow}>
@@ -97,31 +142,20 @@ export default function StepDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
-  backButton: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md,
-    alignSelf: 'flex-start',
-  },
-  backArrow: { fontSize: 20, color: colors.primary, marginRight: 4 },
-  backLabel: { color: colors.primary, fontWeight: '600' },
-
   title: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: spacing.lg },
-
   stageCard: {},
   stageTitle: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center' },
   progressText: { fontSize: 12, color: colors.placeholder, marginTop: spacing.sm },
   tasksLabel: { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: spacing.md, marginBottom: 4 },
-
   gapBelow: { marginTop: spacing.md },
   taskRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   checkbox: {
-    width: 16, height: 16, borderWidth: 1.5,
-    borderColor: colors.placeholder, alignItems: 'center', justifyContent: 'center',
-    marginRight: spacing.sm,
+    width: 16, height: 16, borderWidth: 1.5, borderColor: colors.placeholder,
+    alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm,
   },
   checkboxChecked: { borderColor: colors.primary },
   checkboxTick: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   taskLabel: { flex: 1, fontSize: 13 },
-
   explanationCard: { marginTop: spacing.sm },
   explanationTodo: { fontWeight: '600', marginBottom: 4 },
   explanationText: { color: colors.placeholder },
