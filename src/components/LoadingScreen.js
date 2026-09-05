@@ -1,8 +1,15 @@
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Text, Animated, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, shared } from '../styles/styles';
+import { colors, typography, spacing, shared } from '../styles/styles';
 
 export default function LoadingScreen({ label = 'Loading' }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+  }, []);
+
   return (
     <SafeAreaView
       edges={['top']}
@@ -11,9 +18,22 @@ export default function LoadingScreen({ label = 'Loading' }) {
       accessibilityLabel={label}
       accessibilityRole="progressbar"
     >
-      <ActivityIndicator color={colors.primary} />
+      {/* <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <ActivityIndicator color={colors.primary} style={styles.spinner} />
+        <Text style={[typography.caption, styles.label]}>{label}</Text>
+      </Animated.View> */}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({ centered: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
+const styles = StyleSheet.create({
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 140, height: 70, marginBottom: spacing.lg },
+  spinner: { marginBottom: spacing.sm },
+  label: { textAlign: 'center' },
+});
