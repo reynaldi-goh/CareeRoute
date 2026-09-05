@@ -11,6 +11,15 @@ import { supabase } from '../API/supabaseClient';
 import { useProfile } from '../context/ProfileContext';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('default', {
     name: 'default',

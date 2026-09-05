@@ -10,6 +10,7 @@ export function ProfileProvider({ children }) {
   const [email, setEmail] = useState(''); // read-only — comes from auth.users via the session, not profiles
   const [avatarPath, setAvatarPath] = useState(null); // storage path, e.g. "<user_id>/avatar.jpg"
   const [avatarPublicUrl, setAvatarPublicUrl] = useState(null); // derived, displayable URL
+  const [avatarVersion, setAvatarVersion] = useState(0); // bumped on every upload, used to cache-bust avatarPublicUrl
   const [birthday, setBirthday] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -19,8 +20,16 @@ export function ProfileProvider({ children }) {
     setEmail('');
     setAvatarPath(null);
     setAvatarPublicUrl(null);
+    setAvatarVersion(0);
     setBirthday(null);
     setNotificationsEnabled(false);
+  };
+
+  // Builds the displayable URL from a storage path + version, so every caller
+  // (initial load, post-upload) produces a URL in the same cache-busted shape.
+  const buildPublicUrl = (path, version) => {
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return `${data.publicUrl}?v=${version}`;
   };
 
   const loadProfileForUser = useCallback(async (userId, userEmail) => {
@@ -40,10 +49,12 @@ export function ProfileProvider({ children }) {
         setBirthday(profileRow.birthday ? new Date(profileRow.birthday) : null);
         setNotificationsEnabled(!!profileRow.notifications_enabled);
 
+        const version = profileRow.avatar_version || 0;
+        setAvatarVersion(version);
+
         if (profileRow.avatar_url) {
           setAvatarPath(profileRow.avatar_url);
-          const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(profileRow.avatar_url);
-          setAvatarPublicUrl(publicUrlData.publicUrl);
+          setAvatarPublicUrl(buildPublicUrl(profileRow.avatar_url, version));
         } else {
           setAvatarPath(null);
           setAvatarPublicUrl(null);
@@ -99,13 +110,14 @@ export function ProfileProvider({ children }) {
     if ('notificationsEnabled' in updates) setNotificationsEnabled(updates.notificationsEnabled);
   };
 
-  // Uploads the picked photo to Storage and links it in profiles.avatar_url.
+  // Uploads the picked photo to Storage, bumps avatar_version, and links both in profiles.
   const uploadAvatar = async (localUri) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) throw new Error('No signed-in user to save the avatar for.');
 
     const path = `${userId}/avatar.jpg`;
+    const nextVersion = avatarVersion + 1;
 
     // supabase-js needs raw bytes, not a RN file:// URI — read as base64, then decode to an ArrayBuffer
     const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
@@ -114,13 +126,15 @@ export function ProfileProvider({ children }) {
       .upload(path, decode(base64), { contentType: 'image/jpeg', upsert: true });
     if (uploadError) throw uploadError;
 
-    const { error: updateError } = await supabase.from('profiles').update({ avatar_url: path }).eq('id', userId);
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: path, avatar_version: nextVersion })
+      .eq('id', userId);
     if (updateError) throw updateError;
 
-    const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path);
     setAvatarPath(path);
-    // cache-bust so a re-upload of the same filename shows immediately instead of a stale cached image
-    setAvatarPublicUrl(`${publicUrlData.publicUrl}?t=${Date.now()}`);
+    setAvatarVersion(nextVersion);
+    setAvatarPublicUrl(buildPublicUrl(path, nextVersion));
 
     return path;
   };
