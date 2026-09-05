@@ -1,40 +1,94 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCareer } from '../context/CareerContext';
-import { colors, typography, spacing, shared } from '../styles/styles';
+import { colors, typography, spacing, shared, radius } from '../styles/styles';
 
 export default function PathDiagramScreen({ navigation }) {
   const { goal, stages, getStageStatus, removeRoadmap } = useCareer();
 
-  const fadeAnims = useRef([]).current;
-  const arrowAnims = useRef([]).current;
+  const fadeAnims = useMemo(() => stages.map(() => new Animated.Value(0)), [stages]);
+  const slideAnims = useMemo(() => stages.map(() => new Animated.Value(16)), [stages]);
+  const arrowAnims = useMemo(() => stages.map(() => new Animated.Value(0)), [stages]);
 
-  useEffect(() => {
-    if (stages.length === 0) {
-      navigation.replace('PathPrompt');
-      return;
-    }
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef(null);
 
-    fadeAnims.length = 0;
-    arrowAnims.length = 0;
-    stages.forEach(() => {
-      fadeAnims.push(new Animated.Value(0));
-      arrowAnims.push(new Animated.Value(0));
-    });
+  // Set to true right before pushing StepDetail — tells the next focus effect
+  // to skip the reveal and just show the settled state, since the user is
+  // simply returning to a screen they were already looking at.
+  const skipNextRevealRef = useRef(false);
 
-    const sequence = [];
-    stages.forEach((_, i) => {
-      sequence.push(Animated.timing(fadeAnims[i], { toValue: 1, duration: 350, useNativeDriver: true }));
-      if (i < stages.length - 1) {
-        sequence.push(Animated.timing(arrowAnims[i], { toValue: 1, duration: 200, useNativeDriver: true }));
+  const startPulseLoop = () => {
+    pulseAnim.setValue(1);
+    pulseLoopRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    pulseLoopRef.current.start();
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (stages.length === 0) {
+        navigation.replace('PathPrompt');
+        return;
       }
-    });
 
-    Animated.stagger(80, sequence).start();
-  }, [stages]);
+      if (skipNextRevealRef.current) {
+        skipNextRevealRef.current = false;
+        // jump straight to end-state, no animation — just returning from StepDetail
+        fadeAnims.forEach((v) => v.setValue(1));
+        slideAnims.forEach((v) => v.setValue(0));
+        arrowAnims.forEach((v) => v.setValue(1));
+        startPulseLoop();
 
-  if (stages.length === 0) return null; // brief flash while the effect above redirects
+        return () => {
+          if (pulseLoopRef.current) {
+            pulseLoopRef.current.stop();
+            pulseLoopRef.current = null;
+          }
+          pulseAnim.setValue(1);
+        };
+      }
+
+      // fresh arrival (from another tab, or a newly generated roadmap) — play the full reveal
+      fadeAnims.forEach((v) => v.setValue(0));
+      slideAnims.forEach((v) => v.setValue(16));
+      arrowAnims.forEach((v) => v.setValue(0));
+      pulseAnim.setValue(1);
+
+      const sequence = [];
+      stages.forEach((_, i) => {
+        sequence.push(
+          Animated.parallel([
+            Animated.timing(fadeAnims[i], { toValue: 1, duration: 350, useNativeDriver: true }),
+            Animated.spring(slideAnims[i], { toValue: 0, useNativeDriver: true, friction: 7, tension: 60 }),
+          ])
+        );
+        if (i < stages.length - 1) {
+          sequence.push(
+            Animated.timing(arrowAnims[i], { toValue: 1, duration: 200, useNativeDriver: true })
+          );
+        }
+      });
+
+      Animated.stagger(80, sequence).start(startPulseLoop);
+
+      return () => {
+        if (pulseLoopRef.current) {
+          pulseLoopRef.current.stop();
+          pulseLoopRef.current = null;
+        }
+        pulseAnim.setValue(1);
+      };
+    }, [stages])
+  );
+
+  if (stages.length === 0) return null;
 
   return (
     <SafeAreaView edges={['top']} style={shared.screen}>
@@ -49,47 +103,85 @@ export default function PathDiagramScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {stages.map((s, i) => (
-          <View key={i}>
-            <Animated.View style={{ opacity: fadeAnims[i] || 1 }}>
-              <TouchableOpacity
-                style={[shared.card, styles.stageCard]}
-                onPress={() => navigation.navigate('StepDetail', { stageIndex: i })}
+        {stages.map((s, i) => {
+          const status = getStageStatus(i);
+          const isGoal = i === stages.length - 1;
+
+          return (
+            <View key={i}>
+              <Animated.View
+                style={{
+                  opacity: fadeAnims[i],
+                  transform: [
+                    { translateY: slideAnims[i] },
+                    { scale: status === 'current' ? pulseAnim : 1 },
+                  ],
+                }}
               >
-                <View style={[styles.statusDot, statusDotStyle(getStageStatus(i))]} />
-                <View style={styles.stageTextWrap}>
-                  <Text style={typography.section}>{s.title}</Text>
-                  <Text style={typography.caption}>{statusLabel(getStageStatus(i))}</Text>
+                <View style={styles.stageRow}>
+                  <View style={styles.arrowSlot}>
+                    {status === 'current' && <Text style={styles.sideArrow}>→</Text>}
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.stageCard,
+                      status === 'done' && styles.stageCardDone,
+                      status === 'current' && styles.stageCardCurrent,
+                      status === 'upcoming' && styles.stageCardUpcoming,
+                    ]}
+                    onPress={() => {
+                      skipNextRevealRef.current = true;
+                      navigation.navigate('StepDetail', { stageIndex: i });
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.stageText,
+                        status === 'done' && styles.stageTextDone,
+                        isGoal && styles.stageTextGoal,
+                      ]}
+                    >
+                      {s.title}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.arrowSlot}>
+                    {status === 'current' && <Text style={styles.sideArrow}>←</Text>}
+                  </View>
                 </View>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {i < stages.length - 1 && (
-              <Animated.View style={[styles.arrowWrap, { opacity: arrowAnims[i] || 1 }]}>
-                <Text style={styles.arrow}>↓</Text>
               </Animated.View>
-            )}
-          </View>
-        ))}
 
-        <TouchableOpacity style={styles.removeLink} onPress={removeRoadmap}>
-          <Text style={styles.removeLinkText}>Remove roadmap</Text>
+              {i < stages.length - 1 && (
+                <Animated.View
+                  style={[
+                    styles.arrowWrap,
+                    {
+                      opacity: arrowAnims[i],
+                      transform: [
+                        {
+                          translateY: arrowAnims[i].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-6, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Text style={styles.arrow}>↓</Text>
+                </Animated.View>
+              )}
+            </View>
+          );
+        })}
+
+        <TouchableOpacity style={[shared.dangerButton, styles.removeButton]} onPress={removeRoadmap}>
+          <Text style={shared.dangerButtonText}>remove roadmap</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function statusDotStyle(status) {
-  if (status === 'done') return { backgroundColor: colors.primary };
-  if (status === 'current') return { backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.text };
-  return { backgroundColor: colors.placeholder };
-}
-
-function statusLabel(status) {
-  if (status === 'done') return 'Completed';
-  if (status === 'current') return 'In progress';
-  return 'Upcoming';
 }
 
 const styles = StyleSheet.create({
@@ -103,11 +195,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
   },
   editButtonText: { color: colors.primary, fontWeight: '600' },
-  stageCard: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
-  statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: spacing.md },
-  stageTextWrap: { flex: 1 },
+
+  stageRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
+  arrowSlot: { width: 20, alignItems: 'center' },
+  sideArrow: { fontSize: 18, color: colors.placeholder },
+
+  stageCard: {
+    flex: 1,
+    borderRadius: radius,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#9CA3AF',
+  },
+  stageCardDone: {
+    backgroundColor: '#4B5563',
+    borderWidth: 0,
+  },
+  stageCardCurrent: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  stageCardUpcoming: {},
+
+  stageText: { fontSize: 14, fontWeight: '500', color: colors.text, textAlign: 'center' },
+  stageTextDone: { color: colors.white, fontWeight: '600' },
+  stageTextGoal: { fontSize: 16, fontWeight: '700' },
+
   arrowWrap: { alignItems: 'center', paddingVertical: 2 },
   arrow: { fontSize: 20, color: colors.placeholder },
-  removeLink: { alignSelf: 'center', marginTop: spacing.lg },
-  removeLinkText: { color: colors.placeholder, fontSize: 13 },
+
+  removeButton: { width: '100%', marginTop: spacing.xl },
 });

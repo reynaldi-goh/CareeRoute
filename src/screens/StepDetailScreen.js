@@ -33,6 +33,9 @@ export default function StepDetailScreen({ route, navigation }) {
   };
 
   const doneCount = stage.todos.filter((_, i) => checked[i]).length;
+  const progressPct = stage.todos.length > 0
+    ? Math.round((doneCount / stage.todos.length) * 100)
+    : 0;
 
   return (
     <SafeAreaView edges={['top']} style={shared.screen}>
@@ -41,31 +44,22 @@ export default function StepDetailScreen({ route, navigation }) {
           <Text style={styles.backArrow}>←</Text>
           <Text style={[typography.normal, styles.backLabel]}>Path</Text>
         </TouchableOpacity>
+        
+        <View style={[shared.card, styles.stageCard]}>
+          <Text style={styles.stageTitle}>{stage.title}</Text>
+          <Text style={styles.progressText}>Progress: {progressPct}%</Text>
 
-        <Text style={typography.heading}>{stage.title}</Text>
-        <Text style={[typography.caption, styles.progressText]}>
-          {doneCount} of {stage.todos.length} completed
-        </Text>
-
-        <View style={[shared.card, styles.gapBelow]}>
+          <Text style={styles.tasksLabel}>Tasks</Text>
           {stage.todos.map((todo, i) => (
             <TouchableOpacity
               key={i}
-              style={[styles.taskRow, i > 0 && styles.taskRowDivider]}
+              style={styles.taskRow}
               onPress={() => toggleTodo(stageIndex, i)}
             >
               <View style={[styles.checkbox, checked[i] && styles.checkboxChecked]}>
                 {checked[i] && <Text style={styles.checkboxTick}>✓</Text>}
               </View>
-              <Text
-                style={[
-                  typography.normal,
-                  styles.taskLabel,
-                  checked[i] && styles.taskLabelDone,
-                ]}
-              >
-                {todo}
-              </Text>
+              <Text style={[typography.normal, styles.taskLabel]}>{todo}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -79,7 +73,7 @@ export default function StepDetailScreen({ route, navigation }) {
             <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={shared.primaryButtonText}>
-              {elaborated ? 'Regenerate Explanations' : 'Elaborate with AI'}
+              {elaborated ? 'regenerate explanations' : 'elaborate with AI'}
             </Text>
           )}
         </TouchableOpacity>
@@ -109,19 +103,25 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 20, color: colors.primary, marginRight: 4 },
   backLabel: { color: colors.primary, fontWeight: '600' },
-  progressText: { marginTop: 2 },
+
+  title: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: spacing.lg },
+
+  stageCard: {},
+  stageTitle: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  progressText: { fontSize: 12, color: colors.placeholder, marginTop: spacing.sm },
+  tasksLabel: { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: spacing.md, marginBottom: 4 },
+
   gapBelow: { marginTop: spacing.md },
-  taskRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
-  taskRowDivider: { borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+  taskRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   checkbox: {
-    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,
+    width: 16, height: 16, borderWidth: 1.5,
     borderColor: colors.placeholder, alignItems: 'center', justifyContent: 'center',
     marginRight: spacing.sm,
   },
-  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
-  checkboxTick: { color: colors.white, fontSize: 12, fontWeight: '700' },
-  taskLabel: { flex: 1 },
-  taskLabelDone: { color: colors.placeholder, textDecorationLine: 'line-through' },
+  checkboxChecked: { borderColor: colors.primary },
+  checkboxTick: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  taskLabel: { flex: 1, fontSize: 13 },
+
   explanationCard: { marginTop: spacing.sm },
   explanationTodo: { fontWeight: '600', marginBottom: 4 },
   explanationText: { color: colors.placeholder },

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch,
-  StyleSheet, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCareer } from '../context/CareerContext';
@@ -43,10 +43,10 @@ export default function PathPromptScreen({ navigation }) {
         Given a career goal and (optionally) the user's resume, break it down into a clear, ordered, step-by-step learning path.
 
         Rules:
-        - Return EXACTLY 10 stages, ordered from foundational/beginner to advanced.
+        - Decide the number of stages based on what the career genuinely requires — don't pad thin topics or cram unrelated skills together to hit a target count. Most roadmaps will naturally land somewhere between 8 and 12 stages, but let the topic decide, not this range.
         - The FINAL stage's title MUST be the career goal itself (e.g. if the goal is "AI Engineer", the last stage is titled "AI Engineer"). It represents the destination, not another skill topic — give it exactly ONE todo: "Apply for [goal] roles".
-        - The other 9 stages each represent one skill area or topic, in logical prerequisite order.
-        - Each of those stages must include a "todos" array of 3-6 short (2-4 word) sub-topics.
+        - Every other stage represents one skill area or topic, in logical prerequisite order.
+        - Each of those stages must include a "todos" array of short (2-5 word) sub-topics — typically 3-6, but include more if the topic genuinely has that many distinct parts (e.g. a broad foundational stage like "JavaScript Fundamentals" might reasonably need variables, loops, conditionals, functions, ES6 syntax, classes, and exception handling as separate todos rather than merging them).
         - If a resume is provided, assess which todos the user has LIKELY ALREADY satisfied based on their stated experience/skills. For each stage, include "completedTodos": an array of the 0-based indexes of todos already satisfied. If no resume is provided, "completedTodos" should be empty for every stage.
         - Do not include any explanation, preamble, or markdown outside the JSON.
 
@@ -79,21 +79,23 @@ export default function PathPromptScreen({ navigation }) {
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={typography.heading}>
-          {hasExistingRoadmap ? 'Update your goal' : "What's your career goal?"}
-        </Text>
-        <Text style={[typography.caption, styles.subtitle]}>
-          Tell us where you want to end up — we'll map the path to get there.
-        </Text>
-
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="e.g. I want to become an ML Engineer"
-          placeholderTextColor={colors.placeholder}
-          multiline
-          style={[styles.bigInput, styles.gapBelow]}
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
         />
+
+        <View style={styles.inputWrap}>
+          <Text style={styles.inputIcon}>🎯</Text>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder={'Describe your goal\ne.g. "I want to become an AI Engineer"'}
+            placeholderTextColor={colors.placeholder}
+            multiline
+            style={styles.bigInput}
+          />
+        </View>
 
         {resumeText && (
           <View style={[styles.resumeToggleRow, styles.gapBelow]}>
@@ -120,7 +122,7 @@ export default function PathPromptScreen({ navigation }) {
             <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={shared.primaryButtonText}>
-              {hasExistingRoadmap ? 'Regenerate Roadmap' : 'Generate Roadmap'}
+              {hasExistingRoadmap ? 'regenerate roadmap' : 'generate roadmap'}
             </Text>
           )}
         </TouchableOpacity>
@@ -130,16 +132,26 @@ export default function PathPromptScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, padding: spacing.md, justifyContent: 'center' },
-  subtitle: { marginTop: spacing.xs },
+  content: { flex: 1, padding: spacing.md, justifyContent: 'flex-start' },
+  logo: { width: 350, height: 200, alignSelf: 'center', marginBottom: spacing.md },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 24,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.white,
+  },
+  inputIcon: { fontSize: 16, marginRight: spacing.sm, marginTop: 2 },
   bigInput: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: spacing.lg,
-    fontSize: 18,
+    flex: 1,
+    fontSize: 14,
     color: colors.text,
-    minHeight: 120,
+    minHeight: 50,
     textAlignVertical: 'top',
+    padding: 0,
   },
   gapBelow: { marginTop: spacing.lg },
   resumeToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

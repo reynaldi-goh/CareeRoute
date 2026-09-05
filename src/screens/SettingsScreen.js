@@ -305,11 +305,11 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <View style={[shared.card, styles.gapLg]}>
-          <TouchableOpacity style={styles.listRow}>
+          <TouchableOpacity style={styles.listRow} onPress={() => navigation.navigate('About')}>
             <Text style={typography.normal}>About</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.listRow}>
+          <TouchableOpacity style={styles.listRow} onPress={() => navigation.navigate('PrivacyPolicy')}>
             <Text style={typography.normal}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>

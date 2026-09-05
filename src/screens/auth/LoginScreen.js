@@ -38,24 +38,28 @@ export default function LoginScreen({ navigation }) {
           />
 
           <View style={styles.form}>
-            <TextInput
-              placeholder="email address"
-              placeholderTextColor={colors.placeholder}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-            />
+            <View style={styles.inputWrap}>
+              <TextInput
+                placeholder="email address"
+                placeholderTextColor={colors.placeholder}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+            </View>
 
-            <TextInput
-              placeholder="password"
-              placeholderTextColor={colors.placeholder}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              style={[styles.input, styles.gapSmall]}
-            />
+            <View style={[styles.inputWrap, styles.gapSmall]}>
+              <TextInput
+                placeholder="password"
+                placeholderTextColor={colors.placeholder}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={styles.input}
+              />
+            </View>
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -96,12 +100,16 @@ const styles = StyleSheet.create({
   },
   logo: { width: 350, height: 200, marginTop: spacing.sm, marginBottom: spacing.sm },
   form: { width: '100%', marginTop: spacing.xl },
-  input: {
+  inputWrap: {
     width: '100%',
-    color: 'black',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 24,
+    overflow: 'hidden',
+  },
+  input: {
+    width: '100%',
+    color: 'black',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     fontSize: 14,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet,
+  View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -94,7 +94,7 @@ export default function ResumeScreen() {
       const skillsList = stages.flatMap((s) => s.todos).join(', ');
 
       const parsed = await askAI(
-        'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number, "feedback": string[]}',
+        'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-10, whole number), "feedback": string[]}',
         `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList || 'not yet defined'}`
       );
 
@@ -109,6 +109,7 @@ export default function ResumeScreen() {
 
   const previewUri = resumeFile?.uri || cachedLocalUri;
   const displayName = resumeFile?.name || (resumeSignedUrl ? 'resume.pdf' : null);
+  const busy = extracting || uploading;
 
   if (loadingResume) {
     return (
@@ -121,33 +122,65 @@ export default function ResumeScreen() {
   return (
     <SafeAreaView style={shared.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={typography.heading}>Resume</Text>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        <TouchableOpacity
-          style={[shared.primaryButton, styles.gapBelow]}
-          onPress={pickResume}
-          disabled={extracting || uploading}
-        >
-          <Text style={shared.primaryButtonText}>
-            {previewUri ? 'Replace Resume' : 'Upload Resume'}
-          </Text>
-        </TouchableOpacity>
+        {/* -------------------------
+            No resume yet — big tappable upload box
+        ------------------------- */}
+        {!previewUri && !downloadingPreview && (
+          <TouchableOpacity
+            style={[styles.uploadBox, styles.gapBelow]}
+            onPress={pickResume}
+            disabled={busy}
+            activeOpacity={0.7}
+          >
+            {busy ? (
+              <>
+                <ActivityIndicator color={colors.placeholder} />
+                <Text style={styles.uploadCaption}>
+                  {extracting ? 'Extracting text...' : 'Saving resume...'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.uploadArrow}>↑</Text>
+                <Text style={styles.uploadCaption}>upload your resume in .pdf format</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
-        {extracting && <StatusLine text="Extracting text..." />}
-        {uploading && <StatusLine text="Saving resume..." />}
-        {downloadingPreview && <StatusLine text="Loading preview..." />}
+        {/* -------------------------
+            Fetching a previously-saved resume for preview
+        ------------------------- */}
+        {!previewUri && downloadingPreview && (
+          <View style={[styles.uploadBox, styles.gapBelow]}>
+            <ActivityIndicator color={colors.placeholder} />
+            <Text style={styles.uploadCaption}>Loading preview...</Text>
+          </View>
+        )}
 
+        {/* -------------------------
+            Resume uploaded — preview card
+        ------------------------- */}
         {previewUri && (
-          <View style={[shared.card, styles.previewCard]}>
-            <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
+          <View style={[shared.card, styles.previewCard, styles.gapBelow]}>
+            <View style={styles.previewHeaderRow}>
+              <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
+              <TouchableOpacity onPress={pickResume} disabled={busy}>
+                <Text style={styles.replaceLink}>
+                  {busy ? (extracting ? 'Extracting...' : 'Saving...') : 'Replace'}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.pdfWrap}>
               <Pdf
                 source={{ uri: previewUri, cache: false }}
                 style={styles.pdf}
                 onError={(err) => console.log('PDF load error:', err)}
               />
+              <Text style={styles.previewLabel}>preview</Text>
             </View>
           </View>
         )}
@@ -160,7 +193,7 @@ export default function ResumeScreen() {
           {loadingFeedback ? (
             <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={shared.primaryButtonText}>Generate AI Feedback</Text>
+            <Text style={shared.primaryButtonText}>generate AI feedbacks</Text>
           )}
         </TouchableOpacity>
 
@@ -172,13 +205,17 @@ export default function ResumeScreen() {
 
         {resumeFeedback && (
           <View style={[shared.card, styles.gapBelow]}>
+            <Text style={typography.section}>AI Response</Text>
+
             <View style={styles.scoreRow}>
-              <Text style={typography.section}>Match Score</Text>
+              <Text style={typography.normal}>Match Score</Text>
               <Text style={[typography.heading, styles.scoreValue]}>
                 {resumeFeedback.matchScore}
                 <Text style={typography.caption}>/100</Text>
               </Text>
             </View>
+
+            <Text style={[typography.normal, styles.feedbackHeading]}>AI Feedback</Text>
             {resumeFeedback.feedback.map((point, i) => (
               <View key={i} style={styles.feedbackRow}>
                 <Text style={styles.feedbackBullet}>•</Text>
@@ -189,8 +226,8 @@ export default function ResumeScreen() {
         )}
 
         {(resumeFile || resumeSignedUrl) && (
-          <TouchableOpacity style={styles.removeLink} onPress={removeResume}>
-            <Text style={styles.removeLinkText}>Remove resume</Text>
+          <TouchableOpacity style={[shared.dangerButton, styles.gapBelow]} onPress={removeResume}>
+            <Text style={shared.dangerButtonText}>remove resume</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -198,36 +235,48 @@ export default function ResumeScreen() {
   );
 }
 
-function StatusLine({ text }) {
-  return (
-    <View style={styles.statusRow}>
-      <ActivityIndicator size="small" color={colors.placeholder} />
-      <Text style={[typography.caption, styles.statusText]}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  gapBelow: { marginTop: spacing.md },
+  title: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  gapBelow: { marginTop: spacing.lg },
   gapSmall: { marginTop: spacing.xs },
   errorText: { color: '#DC2626', marginTop: spacing.sm },
   disabledButton: { backgroundColor: colors.placeholder },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
-  statusText: { marginLeft: spacing.sm },
-  previewCard: { marginTop: spacing.md, padding: spacing.sm },
-  previewName: { marginBottom: spacing.sm, marginLeft: 4 },
+
+  uploadBox: {
+    height: 220,
+    borderWidth: 1,
+    borderColor: '#9CA3AF',
+    borderRadius: radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  uploadArrow: { fontSize: 40, color: colors.placeholder, marginBottom: spacing.sm },
+  uploadCaption: { fontSize: 13, color: colors.placeholder, marginTop: spacing.sm, textAlign: 'center' },
+
+  previewCard: { padding: spacing.sm },
+  previewHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: spacing.sm, marginHorizontal: 4,
+  },
+  previewName: { flex: 1 },
+  replaceLink: { color: colors.primary, fontWeight: '600', fontSize: 13 },
   pdfWrap: { height: 400, borderRadius: radius, overflow: 'hidden' },
   pdf: { flex: 1 },
+  previewLabel: {
+    position: 'absolute', bottom: spacing.sm, right: spacing.sm,
+    fontSize: 11, color: colors.placeholder,
+  },
+
   scoreRow: {
     flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   scoreValue: { color: colors.primary },
+  feedbackHeading: { fontWeight: '600', marginTop: spacing.md },
   feedbackRow: { flexDirection: 'row', marginTop: 6 },
   feedbackBullet: { color: colors.primary, marginRight: spacing.sm, fontSize: 16 },
   feedbackText: { flex: 1 },
-  removeLink: { alignSelf: 'center', marginTop: spacing.lg },
-  removeLinkText: { color: colors.placeholder, fontSize: 13 },
 });
