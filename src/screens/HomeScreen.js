@@ -126,12 +126,14 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.sectionButton}>
           <Button
             label="finish the tasks"
-            onPress={() =>
+            onPress={() => {
+              // No `fromDiagram` here — arriving from Home should still show
+              // PathDiagram's full reveal animation when the user goes back.
               navigation.navigate('Path', {
                 screen: 'StepDetail',
                 params: { stageIndex: activeStageIndex },
-              })
-            }
+              });
+            }}
             disabled={!activeStage}
           />
         </View>

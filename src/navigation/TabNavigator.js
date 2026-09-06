@@ -5,6 +5,7 @@ import PathStack from '../navigation/PathStackNavigator';
 import ResumeScreen from '../screens/ResumeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { colors } from '../styles/styles';
+import SettingsStack from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,7 +32,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Path" component={PathStack} />
       <Tab.Screen name="Resume" component={ResumeScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Settings" component={SettingsStack} />
     </Tab.Navigator>
   );
 }

@@ -8,6 +8,7 @@ import AuthStack from './src/navigation/AuthNavigator';
 import { CareerProvider } from './src/context/CareerContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 import { supabase } from './src/API/supabaseClient';
+import OfflineBanner from './src/components/OfflineBanner';
 
 const RootStack = createNativeStackNavigator();
 
@@ -67,6 +68,7 @@ export default function App() {
   if (checkingSession) {
     return (
       <SafeAreaProvider>
+        <OfflineBanner />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator />
         </View>
@@ -78,6 +80,7 @@ export default function App() {
     <CareerProvider>
       <ProfileProvider>
         <SafeAreaProvider>
+          <OfflineBanner />
           <NavigationContainer ref={navigationRef}>
             <RootStack.Navigator screenOptions={{ headerShown: false }}>
               {session ? (

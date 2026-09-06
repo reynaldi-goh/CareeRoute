@@ -11,7 +11,7 @@ import Button from '../components/Button';
 import BackLink from '../components/BackLink';
 
 export default function StepDetailScreen({ route, navigation }) {
-  const { stageIndex } = route.params;
+  const { stageIndex, fromDiagram } = route.params;
   const { goal, stages, checkedByStage, toggleTodo } = useCareer();
 
   const stage = stages[stageIndex];
@@ -26,7 +26,9 @@ export default function StepDetailScreen({ route, navigation }) {
     : 0;
 
   const handleBack = () => {
-    navigation.navigate('PathDiagram');
+    // Only skip PathDiagram's reveal animation when we actually came from there —
+    // arrivals from Home/Settings/Resume etc. should still see the full animation.
+    navigation.navigate('PathDiagram', fromDiagram ? { skipAnim: true } : undefined);
   };
 
   const borderAnim = useRef(new Animated.Value(0)).current;

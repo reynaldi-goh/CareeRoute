@@ -101,7 +101,7 @@ export default function ResumeScreen() {
         const skillsList = stages.flatMap((s) => s.todos).join(', ');
 
         const parsed = await askAI(
-          'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-10, whole number), "feedback": string[]}',
+          'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-100, whole number), "feedback": string[]}',
           `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList || 'not yet defined'}`
         );
 

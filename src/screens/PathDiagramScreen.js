@@ -1,6 +1,6 @@
 import { useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '../context/CareerContext';
@@ -8,8 +8,9 @@ import { colors, typography, spacing, shared, radius } from '../styles/styles';
 import Button from '../components/Button';
 import { confirmAction } from '../utils/confirmAction';
 
-export default function PathDiagramScreen({ navigation }) {
+export default function PathDiagramScreen({ navigation, route }) {
   const { goal, stages, getStageStatus, removeRoadmap } = useCareer();
+  const insets = useSafeAreaInsets();
 
   const fadeAnims = useMemo(() => stages.map(() => new Animated.Value(0)), [stages]);
   const slideAnims = useMemo(() => stages.map(() => new Animated.Value(16)), [stages]);
@@ -17,7 +18,15 @@ export default function PathDiagramScreen({ navigation }) {
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef(null);
-  const skipNextRevealRef = useRef(false);
+
+  // Mirror route.params.skipAnim into a ref on every render. Refs update without
+  // needing to appear in a dependency array, so consuming/clearing the flag below
+  // (via navigation.setParams) can't itself cause useFocusEffect to re-run the
+  // effect a second time with a stale/cleared value.
+  const skipAnimRef = useRef(false);
+  if (route.params?.skipAnim) {
+    skipAnimRef.current = true;
+  }
 
   const startPulseLoop = () => {
     pulseAnim.setValue(1);
@@ -37,8 +46,14 @@ export default function PathDiagramScreen({ navigation }) {
         return;
       }
 
-      if (skipNextRevealRef.current) {
-        skipNextRevealRef.current = false;
+      const shouldSkip = skipAnimRef.current;
+      skipAnimRef.current = false;
+      // Clear the param too, so a future navigation into this screen that doesn't
+      // explicitly set skipAnim can't accidentally inherit a stale true value.
+      // This does NOT re-run this effect, since skipAnim isn't in the deps array below.
+      navigation.setParams({ skipAnim: undefined });
+
+      if (shouldSkip) {
         fadeAnims.forEach((v) => v.setValue(1));
         slideAnims.forEach((v) => v.setValue(0));
         arrowAnims.forEach((v) => v.setValue(1));
@@ -102,7 +117,7 @@ export default function PathDiagramScreen({ navigation }) {
   if (stages.length === 0) return null;
 
   return (
-    <SafeAreaView edges={['top']} style={shared.screen}>
+    <View style={[shared.screen, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
           <View>
@@ -148,8 +163,7 @@ export default function PathDiagramScreen({ navigation }) {
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      skipNextRevealRef.current = true;
-                      navigation.navigate('StepDetail', { stageIndex: i });
+                      navigation.navigate('StepDetail', { stageIndex: i, fromDiagram: true });
                     }}
                     accessibilityRole="button"
                     accessibilityLabel={`${s.title}, ${status}`}
@@ -199,7 +213,7 @@ export default function PathDiagramScreen({ navigation }) {
           <Button label="remove roadmap" variant="danger" onPress={handleRemoveRoadmap} />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
