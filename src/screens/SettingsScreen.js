@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../API/supabaseClient';
 import { useProfile } from '../context/ProfileContext';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
@@ -30,9 +31,6 @@ if (Platform.OS === 'android') {
     importance: Notifications.AndroidImportance.HIGH,
   });
 }
-
-const ICON_CAMERA = '📷';
-const ICON_EDIT = '✎';
 
 export default function SettingsScreen({ navigation }) {
   const {
@@ -215,7 +213,7 @@ export default function SettingsScreen({ navigation }) {
               </View>
             )}
             <View style={styles.avatarBadge}>
-              <Text style={styles.avatarBadgeIcon}>{ICON_CAMERA}</Text>
+              <Ionicons name="camera" size={14} color={colors.text} />
             </View>
           </TouchableOpacity>
 
@@ -265,7 +263,7 @@ export default function SettingsScreen({ navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel="Edit username"
               >
-                <Text style={styles.editIcon}>{ICON_EDIT}</Text>
+                <Ionicons name="pencil" size={15} color={colors.primary} style={styles.editIcon} />
               </TouchableOpacity>
             </View>
           )}
@@ -277,14 +275,6 @@ export default function SettingsScreen({ navigation }) {
               <Text style={typography.caption}>Email</Text>
               <Text style={[typography.normal, styles.disabledField]}>{email}</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => Alert.alert('Coming soon', 'Email changes are not supported yet.')}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Edit email, coming soon"
-            >
-              <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.divider} />
@@ -294,14 +284,6 @@ export default function SettingsScreen({ navigation }) {
               <Text style={typography.caption}>Password</Text>
               <Text style={[typography.normal, styles.disabledField]}>········</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => Alert.alert('Coming soon', 'Password changes are not supported yet.')}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Edit password, coming soon"
-            >
-              <Text style={[styles.editIcon, styles.editIconDisabled]}>{ICON_EDIT}</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.divider} />
@@ -319,7 +301,7 @@ export default function SettingsScreen({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel="Edit birthday"
             >
-              <Text style={styles.editIcon}>{ICON_EDIT}</Text>
+              <Ionicons name="pencil" size={15} color={colors.primary} style={styles.editIcon} />
             </TouchableOpacity>
           </View>
         </View>
@@ -356,21 +338,23 @@ export default function SettingsScreen({ navigation }) {
 
         <View style={[shared.card, styles.gapLg]}>
           <TouchableOpacity
-            style={styles.listRow}
+            style={[styles.listRow, styles.rowBetween]}
             onPress={() => navigation.navigate('About')}
             accessibilityRole="button"
             accessibilityLabel="About"
           >
             <Text style={typography.normal}>About</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.placeholder} />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity
-            style={styles.listRow}
+            style={[styles.listRow, styles.rowBetween]}
             onPress={() => navigation.navigate('PrivacyPolicy')}
             accessibilityRole="button"
             accessibilityLabel="Privacy Policy"
           >
             <Text style={typography.normal}>Privacy Policy</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.placeholder} />
           </TouchableOpacity>
         </View>
 
@@ -411,14 +395,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarBadgeIcon: { fontSize: 13 },
 
   usernameRow: {
     flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: spacing.xs,
   },
   usernameText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  editIcon: { fontSize: 15, color: colors.primary, marginLeft: spacing.xs },
-  editIconDisabled: { color: colors.placeholder },
+  editIcon: { marginLeft: spacing.xs },
 
   usernameEditRow: {
     flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, width: '100%', paddingHorizontal: spacing.lg,

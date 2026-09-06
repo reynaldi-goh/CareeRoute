@@ -8,6 +8,7 @@ import { extractText } from 'expo-pdf-text-extract';
 import * as FileSystem from 'expo-file-system/legacy';
 import Pdf from 'react-native-pdf';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { useCareer } from '../context/CareerContext';
 import { askAI } from '../API/ai';
 import { colors, typography, radius, spacing, shared } from '../styles/styles';
@@ -100,7 +101,7 @@ export default function ResumeScreen() {
         const skillsList = stages.flatMap((s) => s.todos).join(', ');
 
         const parsed = await askAI(
-          'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-100, whole number), "feedback": string[]}',
+          'You are a resume reviewer. Given a resume, a career goal, and the specific skills required for that career path, assess how well the resume matches. Return ONLY valid JSON in this shape: {"matchScore": number (0-10, whole number), "feedback": string[]}',
           `Resume:\n${resumeText}\n\nCareer goal: ${goal}\n\nRequired skills for this path: ${skillsList || 'not yet defined'}`
         );
 
@@ -168,7 +169,7 @@ export default function ResumeScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.uploadArrow}>↑</Text>
+                <Ionicons name="cloud-upload-outline" size={40} color={colors.placeholder} />
                 <Text style={styles.uploadCaption}>upload your resume in .pdf format</Text>
               </>
             )}
@@ -185,7 +186,10 @@ export default function ResumeScreen() {
         {previewUri && (
           <View style={[shared.card, styles.previewCard, styles.gapBelow]}>
             <View style={styles.previewHeaderRow}>
-              <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
+              <View style={styles.previewNameRow}>
+                <Ionicons name="document-text-outline" size={14} color={colors.placeholder} />
+                <Text style={[typography.caption, styles.previewName]}>{displayName}</Text>
+              </View>
               <TouchableOpacity
                 onPress={pickResume}
                 disabled={busy}
@@ -272,7 +276,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  uploadArrow: { fontSize: 40, color: colors.placeholder, marginBottom: spacing.sm },
   uploadCaption: { fontSize: 13, color: colors.placeholder, marginTop: spacing.sm, textAlign: 'center' },
 
   previewCard: { padding: spacing.sm },
@@ -280,7 +283,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: spacing.sm, marginHorizontal: 4,
   },
-  previewName: { flex: 1 },
+  previewNameRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.xs },
+  previewName: {},
   replaceLink: { color: colors.primary, fontWeight: '600', fontSize: 13 },
   pdfWrap: { height: 400, borderRadius: radius, overflow: 'hidden' },
   pdf: { flex: 1 },
