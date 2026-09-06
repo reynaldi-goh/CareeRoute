@@ -6,6 +6,7 @@ import StepDetailScreen from '../screens/StepDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
+// stack nested inside the Path tab, gate decides whether to show the prompt or the diagram
 export default function PathStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

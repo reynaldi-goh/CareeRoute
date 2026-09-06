@@ -18,7 +18,7 @@ export default function LoadingScreen({ label = 'Loading' }) {
       accessibilityLabel={label}
       accessibilityRole="progressbar"
     >
-      {/* <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+      <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
         <Image
           source={require('../../assets/logo.png')}
           style={styles.logo}
@@ -26,7 +26,7 @@ export default function LoadingScreen({ label = 'Loading' }) {
         />
         <ActivityIndicator color={colors.primary} style={styles.spinner} />
         <Text style={[typography.caption, styles.label]}>{label}</Text>
-      </Animated.View> */}
+      </Animated.View>
     </SafeAreaView>
   );
 }

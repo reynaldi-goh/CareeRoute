@@ -1,6 +1,6 @@
 import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, shared } from '../styles/styles';
+import { typography, spacing, shared } from '../styles/styles';
 import BackLink from '../components/BackLink';
 
 export default function PrivacyPolicyScreen({ navigation }) {
@@ -14,6 +14,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
         </Text>
         <Text style={[typography.caption, styles.lastUpdated]}>Last updated: September 2026</Text>
 
+        {/* what data is collected */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           What we collect
         </Text>
@@ -24,6 +25,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           username, profile photo, and birthday.
         </Text>
 
+        {/* how that data is used, and which third parties see it */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           How we use it
         </Text>
@@ -36,6 +38,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           stored securely with our backend provider, Supabase, and is only accessible to you.
         </Text>
 
+        {/* notification opt-out info */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           Notifications
         </Text>
@@ -44,6 +47,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           can turn these off at any time in Settings or in your device's system settings.
         </Text>
 
+        {/* resume/photo storage and visibility */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           Your resume and photos
         </Text>
@@ -53,6 +57,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           your avatar within the app.
         </Text>
 
+        {/* user-facing deletion/removal options */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           Your control over your data
         </Text>
@@ -62,6 +67,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
           account deletion, contact us using the details below.
         </Text>
 
+        {/* contact email, spelled out for screen readers via accessibilityLabel */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           Contact
         </Text>

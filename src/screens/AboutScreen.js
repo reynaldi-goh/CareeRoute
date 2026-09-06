@@ -1,6 +1,6 @@
 import { Text, ScrollView, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, shared } from '../styles/styles';
+import { typography, spacing, shared } from '../styles/styles';
 import BackLink from '../components/BackLink';
 
 export default function AboutScreen({ navigation }) {
@@ -17,6 +17,7 @@ export default function AboutScreen({ navigation }) {
           accessibilityLabel="CareeRoute logo"
         />
 
+        {/* intro blurb */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           What is CareeRoute?
         </Text>
@@ -26,6 +27,7 @@ export default function AboutScreen({ navigation }) {
           milestones to get there, then tracks your progress as you complete each step.
         </Text>
 
+        {/* feature list */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           What it does
         </Text>
@@ -36,6 +38,7 @@ export default function AboutScreen({ navigation }) {
           • Lets you check off tasks and track progress over time
         </Text>
 
+        {/* tech stack */}
         <Text style={[typography.section, styles.gapBelow]} accessibilityRole="header">
           Built with
         </Text>

@@ -3,12 +3,12 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import PathStack from '../navigation/PathStackNavigator';
 import ResumeScreen from '../screens/ResumeScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import { colors } from '../styles/styles';
 import SettingsStack from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
+// filled/outline icon pair per tab, keyed by route name
 const TAB_ICONS = {
   Home: { active: 'home', inactive: 'home-outline' },
   Path: { active: 'map', inactive: 'map-outline' },
@@ -16,6 +16,7 @@ const TAB_ICONS = {
   Settings: { active: 'settings', inactive: 'settings-outline' },
 };
 
+// root bottom tab bar shown to signed-in users — Path and Settings are nested stacks, the rest are single screens
 export default function TabNavigator() {
   return (
     <Tab.Navigator

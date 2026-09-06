@@ -1,6 +1,7 @@
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { colors, typography, spacing } from '../styles/styles';
 
+// small "← back to X" link, used at the top of sub-screens instead of a header back button
 export default function BackLink({ label, onPress }) {
   return (
     <TouchableOpacity
