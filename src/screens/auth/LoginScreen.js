@@ -11,6 +11,7 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // handle login (validate fields, then attempt Supabase sign-in)
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Please enter both email and password.');
@@ -24,7 +25,6 @@ export default function LoginScreen({ navigation }) {
       setError(error.message);
       return;
     }
-    // No manual navigation needed if you gate navigation on session state (see note below)
   };
 
   return (

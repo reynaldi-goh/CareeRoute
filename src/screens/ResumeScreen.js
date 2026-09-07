@@ -34,6 +34,8 @@ export default function ResumeScreen() {
   const [cachedLocalUri, setCachedLocalUri] = useState(null);
   const [downloadingPreview, setDownloadingPreview] = useState(false);
 
+  // fetch preview (for a saved resume, download it privately to this device
+  // so react-native-pdf can render it as a local file
   useEffect(() => {
     if (resumeFile?.uri) return;
 
@@ -61,6 +63,7 @@ export default function ResumeScreen() {
     return () => { cancelled = true; };
   }, [resumeSignedUrl, resumeFile]);
 
+  // pick resume (open the document picker, extract text, then upload 
   const pickResume = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
@@ -93,6 +96,8 @@ export default function ResumeScreen() {
     }
   };
 
+  // generate AI feedback (confirm first if feedback already exists, regenerating
+  // discards the old score/feedback, which the user might not expect)
   const generateAIFeedback = async () => {
     const run = async () => {
       setLoadingFeedback(true);
@@ -114,7 +119,6 @@ export default function ResumeScreen() {
       }
     };
 
-    // Regenerating discards any existing feedback, so confirm if there's something to lose
     if (resumeFeedback) {
       confirmAction({
         title: 'Regenerate feedback?',
@@ -127,6 +131,7 @@ export default function ResumeScreen() {
     }
   };
 
+  // remove resume (confirm first, deletes the file and any AI feedback on it)
   const handleRemoveResume = () => {
     confirmAction({
       title: 'Remove resume?',

@@ -13,6 +13,7 @@ export default function SignUpScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
+  // handle sign up (validate fields, then attempt Supabase registration)
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
       setError('Please fill in all fields.');
@@ -39,6 +40,9 @@ export default function SignUpScreen({ navigation }) {
       return;
     }
 
+    // check email confirmation (no session means Supabase is waiting on email
+    // verification before the account becomes usable, show a prompt instead
+    // of silently doing nothing)
     if (!data.session) {
       setMessage('Check your email to confirm your account before logging in.');
       return;

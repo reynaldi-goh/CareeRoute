@@ -16,6 +16,8 @@ import Button from '../components/Button';
 import LoadingScreen from '../components/LoadingScreen';
 import { confirmAction } from '../utils/confirmAction';
 
+// configure notification handler (controls how a notification appears while
+// the app is in the foreground, must be set once at module load, not per-render)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -25,6 +27,9 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// create notification channel (Android 8+ silently drops all notifications
+// without one, no error, no log; so this must run before any notification
+// is ever scheduled)
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('default', {
     name: 'default',
@@ -47,6 +52,8 @@ export default function SettingsScreen({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notifications, setNotifications] = useState(false);
 
+  // sync input with username (context loads async, fill the editable field
+  // once it arrives, without clobbering anything the user's already typed)
   useEffect(() => {
     if (username && !usernameInput) setUsernameInput(username);
   }, [username]);
@@ -55,12 +62,15 @@ export default function SettingsScreen({ navigation }) {
     setNotifications(notificationsEnabled);
   }, [notificationsEnabled]);
 
+  // recheck permission (OS-level permission can be revoked outside the app,
+  // so don't trust the saved DB flag alone — verify against the real permission on mount)
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => {
       if (status !== 'granted') setNotifications(false);
     });
   }, []);
 
+  // save username (skip the write entirely if nothing actually changed)
   const saveUsername = async () => {
     if (!usernameInput.trim() || usernameInput === username) {
       setEditingUsername(false);
@@ -82,6 +92,8 @@ export default function SettingsScreen({ navigation }) {
     setEditingUsername(false);
   };
 
+  // toggle notifications (request OS permission on enable, schedule a daily
+  // reminder, and cancel all scheduled notifications on disable)
   const toggleNotifications = async (value) => {
     if (value) {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -102,6 +114,14 @@ export default function SettingsScreen({ navigation }) {
           seconds: 5,
           channelId: 'default',
         },
+        // Swap to the daily trigger below before shipping to production:
+        //
+        // trigger: {
+        //   type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        //   hour: 9,
+        //   minute: 0,
+        //   channelId: 'default',
+        // },
       });
     } else {
       await Notifications.cancelAllScheduledNotificationsAsync();
@@ -115,6 +135,7 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  // save avatar (show an instant local preview while the actual upload runs in the background)
   const saveAvatar = async (uri) => {
     setAvatarUri(uri);
     setUploadingAvatar(true);
@@ -175,6 +196,8 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  // handle logout (confirm first, signing out ends the session, though it
+  // doesn't delete any data)
   const handleLogout = () => {
     confirmAction({
       title: 'Log out?',
@@ -313,7 +336,7 @@ export default function SettingsScreen({ navigation }) {
             display="default"
             maximumDate={new Date()}
             onChange={async (event, selectedDate) => {
-              setShowDatePicker(Platform.OS === 'ios');
+              setShowDatePicker(Platform.OS === 'ios'); // iOS keeps the picker open until dismissed manually
               if (selectedDate) {
                 try {
                   await saveProfile({ birthday: selectedDate });

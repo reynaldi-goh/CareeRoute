@@ -23,10 +23,12 @@ export default function HomeScreen({ navigation }) {
   const activeStage = activeStageIndex >= 0 ? stages[activeStageIndex] : null;
   const activeChecked = checkedByStage[activeStageIndex] || {};
 
+  // fade in (whole screen fades in once on mount, no repeat, unlike Path's reveal)
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
+  // fetch news (debounced, re-runs whenever the career goal changes)
   useEffect(() => {
     if (!goal) {
       setNews([]);
@@ -51,12 +53,15 @@ export default function HomeScreen({ navigation }) {
       }
     };
 
+    // debounce (goal can change rapidly if the AI's jobTitle extraction re-fires
+    // shortly after a previous one, wait 800ms before actually calling GNews)
     const timeout = setTimeout(fetchNews, 800);
     return () => clearTimeout(timeout);
   }, [goal]);
 
   const currentArticle = news[newsIndex];
 
+  // format date (short "Mon D" style for article metadata; null if invalid/missing)
   const formatNewsDate = (isoString) => {
     if (!isoString) return null;
     const date = new Date(isoString);
@@ -64,6 +69,7 @@ export default function HomeScreen({ navigation }) {
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
+  // cycle news (wrap around at both ends of the article list)
   const previousNews = () => {
     if (news.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -76,11 +82,6 @@ export default function HomeScreen({ navigation }) {
     setNewsIndex((prev) => (prev === news.length - 1 ? 0 : prev + 1));
   };
 
-  const handleToggleTodo = (i) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggleTodo(activeStageIndex, i);
-  };
-
   return (
     <SafeAreaView style={shared.screen} edges={['top']}>
       <Animated.ScrollView
@@ -88,7 +89,7 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.greeting}>Welcome back, {username || 'there'}!</Text>
+        <Text style={styles.greeting}>Welcome back, {username || 'guest'}!</Text>
 
         <View style={styles.goalCard}>
           <Text style={styles.cardTitle}>Career Goal</Text>
@@ -104,6 +105,8 @@ export default function HomeScreen({ navigation }) {
 
         <Text style={styles.sectionTitle}>Today's Tasks</Text>
 
+        {/* view-only list, todos here reflect state but aren't tappable;
+            actually updating progress requires going to StepDetail */}
         <View style={styles.taskCard}>
           {activeStage ? (
             <>
@@ -127,8 +130,9 @@ export default function HomeScreen({ navigation }) {
           <Button
             label="finish the tasks"
             onPress={() => {
-              // No `fromDiagram` here — arriving from Home should still show
-              // PathDiagram's full reveal animation when the user goes back.
+              // navigate to step detail (deliberately no `fromDiagram` param 
+              // arriving from Home should still show PathDiagram's full reveal
+              // animation on the way back, unlike arriving from the diagram itself)
               navigation.navigate('Path', {
                 screen: 'StepDetail',
                 params: { stageIndex: activeStageIndex },

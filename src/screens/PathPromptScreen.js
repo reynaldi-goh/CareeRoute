@@ -18,6 +18,8 @@ export default function PathPromptScreen({ navigation }) {
   const [useResume, setUseResume] = useState(!!resumeText);
   const [error, setError] = useState(null);
 
+  // sync input with goal (goal loads async from Supabase after mount 
+  // fill the input once it arrives, but never overwrite text the user has typed)
   useEffect(() => {
     if (goal && !input) setInput(goal);
   }, [goal]);
@@ -25,6 +27,8 @@ export default function PathPromptScreen({ navigation }) {
   const hasExistingRoadmap = stages.length > 0;
   const includeResume = useResume && !!resumeText;
 
+  // run generate (two AI calls, extract a clean job title, then generate the
+  // full roadmap around it, then persist and navigate to the diagram)
   const runGenerate = async () => {
     setLoading(true);
     setError(null);
@@ -64,6 +68,8 @@ export default function PathPromptScreen({ navigation }) {
     }
   };
 
+  // generate roadmap (validate input, then confirm first if this would
+  // overwrite an existing roadmap's progress)
   const generateRoadmap = () => {
     if (!input.trim()) {
       setError("Tell us what career you're aiming for first.");

@@ -10,11 +10,12 @@ export function ProfileProvider({ children }) {
   const [email, setEmail] = useState(''); // read-only — comes from auth.users via the session, not profiles
   const [avatarPath, setAvatarPath] = useState(null); // storage path, e.g. "<user_id>/avatar.jpg"
   const [avatarPublicUrl, setAvatarPublicUrl] = useState(null); // derived, displayable URL
-  const [avatarVersion, setAvatarVersion] = useState(0); // bumped on every upload, used to cache-bust avatarPublicUrl
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const [birthday, setBirthday] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  // clear all local state (run on sign-out, so no stale data survives to the next user)
   const resetLocalState = () => {
     setUsername('');
     setEmail('');
@@ -25,13 +26,14 @@ export function ProfileProvider({ children }) {
     setNotificationsEnabled(false);
   };
 
-  // Builds the displayable URL from a storage path + version, so every caller
-  // (initial load, post-upload) produces a URL in the same cache-busted shape.
+  // build public url (combine storage path + version into one cache-busted URL,
+  // so every caller, initial load, post-upload — produces the same shape)
   const buildPublicUrl = (path, version) => {
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
     return `${data.publicUrl}?v=${version}`;
   };
 
+  // fetch profile (load the signed-in user's profile row — username, avatar, birthday, etc.)
   const loadProfileForUser = useCallback(async (userId, userEmail) => {
     setLoadingProfile(true);
     try {
@@ -67,6 +69,8 @@ export function ProfileProvider({ children }) {
     }
   }, []);
 
+  // sync with auth (load profile on sign-in, clear everything on sign-out
+  // runs once on mount for the existing session, then again on every auth change)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -88,8 +92,8 @@ export function ProfileProvider({ children }) {
     return () => authListener.subscription.unsubscribe();
   }, [loadProfileForUser]);
 
-  // Saves whichever fields are passed in to the profiles table, and updates local state to match.
-  // e.g. saveProfile({ username: 'new name' }) or saveProfile({ notificationsEnabled: true })
+  // save profile (write whichever fields are passed in to the profiles table,
+  // then update local state to match — e.g. saveProfile({ username: 'new name' }))
   const saveProfile = async (updates) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -110,7 +114,8 @@ export function ProfileProvider({ children }) {
     if ('notificationsEnabled' in updates) setNotificationsEnabled(updates.notificationsEnabled);
   };
 
-  // Uploads the picked photo to Storage, bumps avatar_version, and links both in profiles.
+  // upload avatar (send the picked photo to Storage, bump avatar_version, and
+  // link both in profiles so the new photo shows immediately, not a stale cached one)
   const uploadAvatar = async (localUri) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -119,7 +124,8 @@ export function ProfileProvider({ children }) {
     const path = `${userId}/avatar.jpg`;
     const nextVersion = avatarVersion + 1;
 
-    // supabase-js needs raw bytes, not a RN file:// URI — read as base64, then decode to an ArrayBuffer
+    // convert file (supabase-js needs raw bytes, not a RN file:// URI, read as
+    // base64, then decode to an ArrayBuffer it can actually upload)
     const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -141,7 +147,7 @@ export function ProfileProvider({ children }) {
 
   const value = {
     username,
-    email, // read-only for now
+    email, 
     avatarPublicUrl,
     uploadAvatar,
     birthday,
@@ -153,6 +159,8 @@ export function ProfileProvider({ children }) {
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
 
+// access context (throws early if a screen forgets to wrap itself in ProfileProvider,
+// rather than failing later with a confusing "cannot read property of null")
 export function useProfile() {
   const context = useContext(ProfileContext);
   if (!context) throw new Error('useProfile must be used inside ProfileProvider');

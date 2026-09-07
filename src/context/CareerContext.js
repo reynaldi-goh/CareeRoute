@@ -14,13 +14,14 @@ export function CareerProvider({ children }) {
   const [resumeFeedback, setResumeFeedback] = useState(null);
   const [resumeSignedUrl, setResumeSignedUrl] = useState(null); // signed URL for re-viewing a saved PDF
 
-  // Supabase bookkeeping — lets toggleTodo/saveRoadmap/saveResumeFeedback know exactly which rows to write to
+  // track Supabase row ids (link local state back to the right DB rows on save/update)
   const [roadmapId, setRoadmapId] = useState(null);
   const [todoIdsByStage, setTodoIdsByStage] = useState({});
   const [resumeId, setResumeId] = useState(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
   const [loadingResume, setLoadingResume] = useState(true);
 
+  // clear all local state (run on sign-out, so no stale data survives to the next user)
   const resetLocalState = () => {
     setGoal('');
     setStages([]);
@@ -36,6 +37,7 @@ export function CareerProvider({ children }) {
 
   // ---------- ROADMAP ----------
 
+  // fetch roadmap (load the signed-in user's most recent roadmap, stages, and todos from Supabase)
   const loadRoadmapForUser = useCallback(async (userId) => {
     setLoadingRoadmap(true);
     try {
@@ -48,6 +50,7 @@ export function CareerProvider({ children }) {
         .maybeSingle();
       if (roadmapError) throw roadmapError;
 
+      // clear state (user has no roadmap yet)
       if (!roadmap) {
         setGoal('');
         setStages([]);
@@ -68,6 +71,7 @@ export function CareerProvider({ children }) {
       const loadedChecked = {};
       const loadedTodoIds = {};
 
+      // fetch todos (per stage, since todos are a separate table keyed by stage_id)
       for (let i = 0; i < stageRows.length; i++) {
         const stageRow = stageRows[i];
         const { data: todoRows, error: todosError } = await supabase
@@ -101,9 +105,11 @@ export function CareerProvider({ children }) {
     }
   }, []);
 
+  // toggle todo (flip a single todo's completed state locally, then sync it to Supabase)
   const toggleTodo = async (stageIndex, todoIndex) => {
     const newValue = !checkedByStage[stageIndex]?.[todoIndex];
 
+    // update local state (optimistic — reflects instantly, doesn't wait for the DB write)
     setCheckedByStage((prev) => ({
       ...prev,
       [stageIndex]: {
@@ -119,7 +125,8 @@ export function CareerProvider({ children }) {
     }
   };
 
-  // Local-only state update, used both after a fresh AI generation and after loading from Supabase.
+  // apply roadmap (update local stages/checked state only — used after a fresh AI
+  // generation and after loading from Supabase, so both paths share one code path)
   const applyRoadmap = (parsedStages) => {
     setStages(parsedStages);
     const initialChecked = {};
@@ -132,13 +139,14 @@ export function CareerProvider({ children }) {
     setCheckedByStage(initialChecked);
   };
 
-  // Persists a freshly-generated roadmap to Supabase (replacing any existing one for this user),
-  // then updates local state to match. One roadmap per user, per schema.sql's design.
+  // save roadmap (persist a freshly-generated roadmap to Supabase, replacing any
+  // existing one for this user — schema only allows one roadmap per user)
   const saveRoadmap = async (jobTitle, parsedStages) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) throw new Error('No signed-in user to save the roadmap for.');
 
+    // delete old roadmap (cascades to its stages/todos, per schema.sql's FK setup)
     const { error: deleteError } = await supabase.from('roadmaps').delete().eq('user_id', userId);
     if (deleteError) throw deleteError;
 
@@ -151,6 +159,8 @@ export function CareerProvider({ children }) {
 
     const newTodoIds = {};
 
+    // insert stages and todos (one DB round-trip per row, since each insert
+    // needs its own generated id for the next table's foreign key)
     for (let i = 0; i < parsedStages.length; i++) {
       const stage = parsedStages[i];
       const { data: stageRow, error: stageError } = await supabase
@@ -179,6 +189,7 @@ export function CareerProvider({ children }) {
     applyRoadmap(parsedStages);
   };
 
+  // remove roadmap (delete the user's roadmap from Supabase and clear local state)
   const removeRoadmap = async () => {
     if (roadmapId) {
       const { error } = await supabase.from('roadmaps').delete().eq('id', roadmapId);
@@ -193,6 +204,7 @@ export function CareerProvider({ children }) {
 
   // ---------- RESUME ----------
 
+  // fetch resume (load the signed-in user's most recent resume row and signed preview URL)
   const loadResumeForUser = useCallback(async (userId) => {
     setLoadingResume(true);
     try {
@@ -205,6 +217,7 @@ export function CareerProvider({ children }) {
         .maybeSingle();
       if (error) throw error;
 
+      // clear state (user has no resume yet)
       if (!resumeRow) {
         setResumeId(null);
         setResumeText('');
@@ -222,9 +235,11 @@ export function CareerProvider({ children }) {
       );
 
       if (resumeRow.file_url) {
+        // sign URL (resumes bucket is private, so a fresh signed URL is needed
+        // on every load — the signature expires after 1 hour)
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from('resumes')
-          .createSignedUrl(resumeRow.file_url, 60 * 60); // 1 hour, re-signed on every load
+          .createSignedUrl(resumeRow.file_url, 60 * 60);
         if (signedUrlError) throw signedUrlError;
         setResumeSignedUrl(signedUrlData.signedUrl);
       } else {
@@ -237,7 +252,8 @@ export function CareerProvider({ children }) {
     }
   }, []);
 
-  // Uploads the picked PDF to Storage and saves the extracted text, replacing any previous resume.
+  // upload resume (send the picked PDF to Storage and save its extracted text,
+  // replacing any previous resume for this user)
   const uploadResume = async (localUri, extractedText) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -245,14 +261,15 @@ export function CareerProvider({ children }) {
 
     const path = `${userId}/resume.pdf`;
 
-    // supabase-js needs raw bytes, not a RN file:// URI — read as base64, then decode to an ArrayBuffer
+    // convert file (supabase-js needs raw bytes, not a RN file:// URI — read as
+    // base64, then decode to an ArrayBuffer it can actually upload)
     const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
     const { error: uploadError } = await supabase.storage
       .from('resumes')
       .upload(path, decode(base64), { contentType: 'application/pdf', upsert: true });
     if (uploadError) throw uploadError;
 
-    // one resume per user — clear the old row (feedback becomes stale for a new file anyway)
+    // delete old resume row (one resume per user — old AI feedback is stale for a new file anyway)
     const { error: deleteError } = await supabase.from('resumes').delete().eq('user_id', userId);
     if (deleteError) throw deleteError;
 
@@ -276,6 +293,7 @@ export function CareerProvider({ children }) {
     return resumeRow.id;
   };
 
+  // save feedback (attach AI-generated match score and feedback to the current resume row)
   const saveResumeFeedback = async (matchScore, feedbackArray) => {
     if (!resumeId) throw new Error('No saved resume to attach feedback to.');
     const { error } = await supabase
@@ -286,6 +304,7 @@ export function CareerProvider({ children }) {
     setResumeFeedback({ matchScore, feedback: feedbackArray });
   };
 
+  // remove resume (delete the file from Storage and its row from the DB, then clear local state)
   const removeResume = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -303,6 +322,8 @@ export function CareerProvider({ children }) {
 
   // ---------- AUTH-DRIVEN LOAD/RESET ----------
 
+  // sync with auth (load roadmap/resume on sign-in, clear everything on sign-out —
+  // runs once on mount for the existing session, then again on every auth change)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -328,7 +349,8 @@ export function CareerProvider({ children }) {
     return () => authListener.subscription.unsubscribe();
   }, [loadRoadmapForUser, loadResumeForUser]);
 
-  // single source of truth: which stage is "current" across the whole app
+  // compute active stage (single source of truth for which stage is "current" —
+  // the first stage with any unchecked todo, or the last stage if all are done)
   const activeStageIndex = useMemo(() => {
     if (stages.length === 0) return -1;
     const firstIncomplete = stages.findIndex((stage, i) => {
@@ -338,6 +360,7 @@ export function CareerProvider({ children }) {
     return firstIncomplete === -1 ? stages.length - 1 : firstIncomplete;
   }, [stages, checkedByStage]);
 
+  // get stage status (label a stage done/current/upcoming relative to activeStageIndex)
   const getStageStatus = (stageIndex) => {
     if (stageIndex < activeStageIndex) return 'done';
     if (stageIndex === activeStageIndex) return 'current';
@@ -361,6 +384,8 @@ export function CareerProvider({ children }) {
   return <CareerContext.Provider value={value}>{children}</CareerContext.Provider>;
 }
 
+// access context (throws early if a screen forgets to wrap itself in CareerProvider,
+// rather than failing later with a confusing "cannot read property of null")
 export function useCareer() {
   const context = useContext(CareerContext);
   if (!context) throw new Error('useCareer must be used inside CareerProvider');

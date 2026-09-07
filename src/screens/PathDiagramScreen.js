@@ -19,15 +19,17 @@ export default function PathDiagramScreen({ navigation, route }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef(null);
 
-  // Mirror route.params.skipAnim into a ref on every render. Refs update without
-  // needing to appear in a dependency array, so consuming/clearing the flag below
-  // (via navigation.setParams) can't itself cause useFocusEffect to re-run the
-  // effect a second time with a stale/cleared value.
+  // mirror skipAnim param into a ref (route.params.skipAnim into a ref on every
+  // render, refs update without needing to appear in a dependency array, so
+  // consuming/clearing the flag below via navigation.setParams can't itself
+  // cause useFocusEffect to re-run the effect a second time with a stale value)
   const skipAnimRef = useRef(false);
   if (route.params?.skipAnim) {
     skipAnimRef.current = true;
   }
 
+  // start pulse (gentle breathing scale animation on whichever stage is "current",
+  // runs on a loop until the screen loses focus)
   const startPulseLoop = () => {
     pulseAnim.setValue(1);
     pulseLoopRef.current = Animated.loop(
@@ -39,6 +41,9 @@ export default function PathDiagramScreen({ navigation, route }) {
     pulseLoopRef.current.start();
   };
 
+  // replay reveal on focus (runs the full slide+fade+stagger sequence every
+  // time this screen regains focus, UNLESS skipAnim was set, e.g. returning
+  // from StepDetail shouldn't replay the whole reveal, just settle instantly)
   useFocusEffect(
     useCallback(() => {
       if (stages.length === 0) {
@@ -48,9 +53,9 @@ export default function PathDiagramScreen({ navigation, route }) {
 
       const shouldSkip = skipAnimRef.current;
       skipAnimRef.current = false;
-      // Clear the param too, so a future navigation into this screen that doesn't
-      // explicitly set skipAnim can't accidentally inherit a stale true value.
-      // This does NOT re-run this effect, since skipAnim isn't in the deps array below.
+      // clear the param (so a future navigation into this screen that doesn't
+      // explicitly set skipAnim can't accidentally inherit a stale true value,
+      // this does NOT re-run this effect, since skipAnim isn't in the deps below)
       navigation.setParams({ skipAnim: undefined });
 
       if (shouldSkip) {
@@ -105,6 +110,7 @@ export default function PathDiagramScreen({ navigation, route }) {
     navigation.navigate('PathPrompt');
   };
 
+  // remove roadmap (confirm first, this deletes real user progress, not disposable data)
   const handleRemoveRoadmap = () => {
     confirmAction({
       title: 'Remove roadmap?',
@@ -163,6 +169,8 @@ export default function PathDiagramScreen({ navigation, route }) {
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      // fromDiagram: true (lets StepDetail know to skip the reveal
+                      // animation when the user comes straight back here)
                       navigation.navigate('StepDetail', { stageIndex: i, fromDiagram: true });
                     }}
                     accessibilityRole="button"

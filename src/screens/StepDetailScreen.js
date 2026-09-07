@@ -14,6 +14,11 @@ export default function StepDetailScreen({ route, navigation }) {
   const { stageIndex, fromDiagram } = route.params;
   const { goal, stages, checkedByStage, toggleTodo } = useCareer();
 
+  // stage can become undefined if the roadmap is removed (or regenerated with
+  // fewer stages) while this screen is still mounted underneath PathDiagram
+  // in the stack. Every hook below must still run on every render regardless,
+  // so the "stage missing" bail-out happens AFTER all hooks, right before the
+  // JSX return, never earlier.
   const stage = stages[stageIndex];
   const checked = checkedByStage[stageIndex] || {};
 
@@ -25,14 +30,16 @@ export default function StepDetailScreen({ route, navigation }) {
     ? Math.round((doneCount / stage.todos.length) * 100)
     : 0;
 
+  // handle back (only skip PathDiagram's reveal animation when we actually
+  // came from there, arrivals from Home/Settings/Resume etc. should still
+  // see the full animation on the way back)
   const handleBack = () => {
-    // Only skip PathDiagram's reveal animation when we actually came from there —
-    // arrivals from Home/Settings/Resume etc. should still see the full animation.
     navigation.navigate('PathDiagram', fromDiagram ? { skipAnim: true } : undefined);
   };
 
+  // flash border on completion 
   const borderAnim = useRef(new Animated.Value(0)).current;
-  const wasComplete = useRef(progressPct === 100);
+  const wasComplete = useRef(progressPct === 100); // avoids replaying on mount if already done
 
   useEffect(() => {
     const justCompleted = progressPct === 100 && !wasComplete.current;
@@ -54,6 +61,8 @@ export default function StepDetailScreen({ route, navigation }) {
     outputRange: [colors.cardBorder || '#E5E7EB', '#22C55E'],
   });
 
+  // bail out if stage missing (roadmap removed/regenerated while this screen
+  // sat underneath PathDiagram in the stack runs after all hooks above)
   useEffect(() => {
     if (!stage) {
       navigation.navigate('PathDiagram');
@@ -65,6 +74,7 @@ export default function StepDetailScreen({ route, navigation }) {
     toggleTodo(stageIndex, i);
   };
 
+  // elaborate with AI (expand each todo into a short, career-goal-specific explanation)
   const elaborateWithAI = async () => {
     if (!stage) return;
     setLoading(true);
